@@ -1,0 +1,301 @@
+﻿@page "/"
+@using Binance.Client.Websocket;
+@using Binance.Client.Websocket.Client;
+@using Binance.Client.Websocket.Subscriptions;
+@using Binance.Client.Websocket.Websockets;
+@using Bitfinex.Client.Websocket;
+@using Bitfinex.Client.Websocket.Client;
+@using Bitfinex.Client.Websocket.Utils;
+@using Bitfinex.Client.Websocket.Websockets;
+@using Bitmex.Client.Websocket;
+@using Bitmex.Client.Websocket.Client;
+@using Bitmex.Client.Websocket.Websockets;
+@using Bitstamp.Client.Websocket;
+@using Bitstamp.Client.Websocket.Client;
+@using Bitstamp.Client.Websocket.Communicator;
+@using Coinbase.Client.Websocket;
+@using Coinbase.Client.Websocket.Channels
+@using Coinbase.Client.Websocket.Client;
+@using Coinbase.Client.Websocket.Communicator;
+@using Coinbase.Client.Websocket.Requests;
+@using Crypto.Websocket.Extensions.Core.OrderBooks;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Models;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Sources;
+@using Crypto.Websocket.Extensions.OrderBooks.Sources;
+@using Websocket.Client
+@using Channel = Bitstamp.Client.Websocket.Channels.Channel;
+@using System.Reactive.Linq
+@using System
+
+<h1>Crypto Prices</h1>
+
+@if (!string.IsNullOrWhiteSpace(_status))
+{
+    <small>
+        <i class="las la-spinner la-spin"></i>
+        <span>@_status</span>
+    </small>
+}
+
+@if (_changes.Any())
+{
+    <Card>
+        <table>
+            <thead>
+                <tr>
+                    <th>Exchange</th>
+                    <th>Symbol</th>
+                    <th>Current Price</th>
+                    <th>Diff from Avg (<span class="average">@_averagePrice.ToString("###,###,###.00")</span>)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var info in _changes)
+                {
+                    <tr>
+                        <td class="exchange">@info.Exchange</td>
+                        <td>@info.Pair</td>
+                        <td>@info.Price.ToString("###,###,###.00")</td>
+                        <td>
+                            @if (info.PriceDiff < 0)
+                            {
+                                <i class="las la-arrow-down"></i>
+                            }
+                            else
+                            {
+                                <i class="las la-arrow-up"></i>
+                            }
+                            @info.PriceDiff.ToString("###,###,###.00")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </Card>
+}
+
+
+@code {
+    private readonly CancellationTokenSource _cancellation = new();
+    private readonly List<IDisposable> _streams = new();
+
+    private readonly Dictionary<string, string> _targetMarkets = new()
+        {
+            { "bitmex", "XBTUSD" },
+            { "bitfinex", "BTCUSD" },
+            { "binance", "BTCUSDT" },
+            { "coinbase", "BTC-USD" },
+            { "bitstamp", "BTCUSD" }
+        };
+
+    private string _status = string.Empty;
+    private double _averagePrice;
+    private PriceChange[] _changes = Array.Empty<PriceChange>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var markets = _targetMarkets.OrderBy(x => x.Key).ToArray();
+        var count = 1;
+        var totalCount = markets.Length;
+
+        DisplayStatus($"Start connecting to {totalCount} markets");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        var streams = new List<IObservable<IOrderBookChangeInfo>>();
+        foreach (var market in markets)
+        {
+            var exchange = market.Key;
+            var pair = market.Value;
+
+            DisplayStatus($"Connecting to {exchange} (#{count} of {totalCount})");
+
+            await StartExchange(exchange, new[] { pair }, book => streams.Add(book.BidAskUpdatedStream), _cancellation.Token);
+
+            DisplayStatus($"Subscribed to {exchange} (#{count} of {totalCount})");
+            count += 1;
+        }
+
+        DisplayStatus("Waiting for price change...");
+
+        var subscription = streams.CombineLatest().Subscribe(changes =>
+        {
+            _averagePrice = changes.Average(x => x.Quotes.Mid);
+
+            _changes = changes
+                .OrderBy(x => x.ExchangeName)
+                .Select(x => new PriceChange(
+                    x.ExchangeName,
+                    x.PairOriginal,
+                    x.Quotes.Mid,
+                    _averagePrice - x.Quotes.Mid
+                    ))
+                .ToArray();
+            DisplayStatus(string.Empty);
+        });
+        _streams.Add(subscription);
+    }
+
+    private void DisplayStatus(string status)
+    {
+        _status = status;
+        StateHasChanged();
+    }
+
+    private static Task StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var exchangeSafe = (exchange ?? string.Empty).ToLower();
+        return exchangeSafe switch
+        {
+            "bitmex" => StartBitmex(pairs, initialized, stoppingToken),
+            "bitfinex" => StartBitfinex(pairs, initialized, stoppingToken),
+            "binance" => StartBinance(pairs, initialized, stoppingToken),
+            "coinbase" => StartCoinbase(pairs, initialized, stoppingToken),
+            "bitstamp" => StartBitstamp(pairs, initialized, stoppingToken),
+            _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
+        };
+    }
+
+    private static async Task StartBitmex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitmexValues.ApiWebsocketUrl;
+        var communicator = new BitmexWebsocketCommunicator(url) { Name = "Bitmex" };
+        var client = new BitmexWebsocketClient(communicator);
+        var source = new BitmexOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex reconnected, type: {x.Type}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex disconnected, type: {x.Type}"));
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+
+        foreach (var pair in pairs)
+        {
+            // Send subscription request to order book data
+            client.Send(new Bitmex.Client.Websocket.Requests.BookSubscribeRequest(pair));
+        }
+    }
+
+    private static async Task StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitfinexValues.ApiWebsocketUrl;
+        var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
+        var client = new BitfinexWebsocketClient(communicator);
+        var source = new BitfinexOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex reconnected, type: {x.Type}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+
+        foreach (var pair in pairs)
+        {
+            // Send subscription request to order book data
+            client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.BookSubscribeRequest(pair,
+                BitfinexPrecision.P0, BitfinexFrequency.Realtime, "100"));
+        }
+    }
+
+    private static async Task StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BinanceValues.ApiWebsocketUrl;
+        var communicator = new BinanceWebsocketCommunicator(url) { Name = "Binance" };
+        var client = new BinanceWebsocketClient(communicator);
+
+        SubscriptionBase[] subscriptions = pairs
+            .Select(x => new OrderBookDiffSubscription(x))
+            .ToArray();
+        client.SetSubscriptions(subscriptions);
+
+        var source = new BinanceOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Binance reconnected, type: {x.Type}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+
+        foreach (var pair in pairs)
+        {
+            // Binance is special
+            // We need to load snapshot in advance manually via REST call
+            await source.LoadSnapshot(communicator, pair);
+        }
+    }
+
+    private static async Task StartCoinbase(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = CoinbaseValues.ApiWebsocketUrl;
+        var communicator = new CoinbaseWebsocketCommunicator(url) { Name = "Coinbase" };
+        var client = new CoinbaseWebsocketClient(communicator);
+        var source = new CoinbaseOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase reconnected, type: {x.Type}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Coinbase error received, {x.Message}"));
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+
+        foreach (var pair in pairs)
+        {
+            // Send subscription request to order book data
+            client.Send(new SubscribeRequest(
+                new[] { pair },
+                ChannelSubscriptionType.Level2
+            ));
+        }
+    }
+
+    private static async Task StartBitstamp(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitstampValues.ApiWebsocketUrl;
+        var communicator = new BitstampWebsocketCommunicator(url) { Name = "Bitstamp" };
+        var client = new BitstampWebsocketClient(communicator);
+        var source = new BitstampOrderBookSource(client);
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+
+        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp reconnected, type: {x.Type}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Message}"));
+
+        foreach (var pair in pairs)
+        {
+            // Send subscription request to order book data
+            client.Send(new Bitstamp.Client.Websocket.Requests.SubscribeRequest(
+                pair,
+                Channel.OrderBook
+            ));
+        }
+    }
+
+    private static async Task InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
+        IWebsocketClient client, OrderBookSourceBase source)
+    {
+        source.BufferEnabled = false;
+
+        foreach (var pair in pairs)
+        {
+            var orderBook = new CryptoOrderBookL2(pair, source);
+            initialized(orderBook);
+        }
+
+        stoppingToken.Register(client.Dispose);
+
+        Console.WriteLine($"Start connecting to {source.ExchangeName}");
+        await client.Start();
+        Console.WriteLine($"Connected to {source.ExchangeName}");
+    }
+
+    public void Dispose()
+    {
+        foreach (var stream in _streams)
+        {
+            stream.Dispose();
+        }
+
+        _cancellation.Cancel();
+        _cancellation.Dispose();
+    }
+
+    private record PriceChange(string Exchange, string Pair, double Price, double PriceDiff);
+
+}
