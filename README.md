@@ -11,3 +11,5 @@ This sample webassembly application presents possibilities of [crypto-websocket-
 
 
 ![prices](img/screen1.png)
+
+CryptoWatcher as a console application: [marfusios/crypto-watcher](https://github.com/Marfusios/crypto-watcher)

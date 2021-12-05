@@ -162,16 +162,18 @@
         var client = new BitmexWebsocketClient(communicator);
         var source = new BitmexOrderBookSource(client);
 
-        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex reconnected, type: {x.Type}"));
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitmex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new Bitmex.Client.Websocket.Requests.BookSubscribeRequest(pair));
+            }
+        });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex disconnected, type: {x.Type}"));
 
         await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
-
-        foreach (var pair in pairs)
-        {
-            // Send subscription request to order book data
-            client.Send(new Bitmex.Client.Websocket.Requests.BookSubscribeRequest(pair));
-        }
     }
 
     private static async Task StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
@@ -181,18 +183,20 @@
         var client = new BitfinexWebsocketClient(communicator);
         var source = new BitfinexOrderBookSource(client);
 
-        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex reconnected, type: {x.Type}"));
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitfinex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.BookSubscribeRequest(pair,
+                                                                        BitfinexPrecision.P0, BitfinexFrequency.Realtime, "100"));
+            }
+        });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
         client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
 
         await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
-
-        foreach (var pair in pairs)
-        {
-            // Send subscription request to order book data
-            client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.BookSubscribeRequest(pair,
-                BitfinexPrecision.P0, BitfinexFrequency.Realtime, "100"));
-        }
     }
 
     private static async Task StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
@@ -208,17 +212,19 @@
 
         var source = new BinanceOrderBookSource(client);
 
-        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Binance reconnected, type: {x.Type}"));
+        communicator.ReconnectionHappened.Subscribe(async x =>
+        {
+            Console.WriteLine($"Binance reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Binance is special
+                // We need to load snapshot in advance manually via REST call
+                await source.LoadSnapshot(communicator, pair);
+            }
+        });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
 
         await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
-
-        foreach (var pair in pairs)
-        {
-            // Binance is special
-            // We need to load snapshot in advance manually via REST call
-            await source.LoadSnapshot(communicator, pair);
-        }
     }
 
     private static async Task StartCoinbase(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
@@ -228,20 +234,22 @@
         var client = new CoinbaseWebsocketClient(communicator);
         var source = new CoinbaseOrderBookSource(client);
 
-        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase reconnected, type: {x.Type}"));
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Coinbase reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new SubscribeRequest(
+                                                new[] { pair },
+                                                ChannelSubscriptionType.Level2
+                                                ));
+            }
+        });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase disconnected, type: {x.Type}"));
         client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Coinbase error received, {x.Message}"));
 
         await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
-
-        foreach (var pair in pairs)
-        {
-            // Send subscription request to order book data
-            client.Send(new SubscribeRequest(
-                new[] { pair },
-                ChannelSubscriptionType.Level2
-            ));
-        }
     }
 
     private static async Task StartBitstamp(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
@@ -251,20 +259,22 @@
         var client = new BitstampWebsocketClient(communicator);
         var source = new BitstampOrderBookSource(client);
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
-
-        communicator.ReconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp reconnected, type: {x.Type}"));
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitstamp reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new Bitstamp.Client.Websocket.Requests.SubscribeRequest(
+                                    pair,
+                                    Channel.OrderBook
+                                    ));
+            }
+        });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp disconnected, type: {x.Type}"));
         client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Message}"));
 
-        foreach (var pair in pairs)
-        {
-            // Send subscription request to order book data
-            client.Send(new Bitstamp.Client.Websocket.Requests.SubscribeRequest(
-                pair,
-                Channel.OrderBook
-            ));
-        }
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
     private static async Task InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
