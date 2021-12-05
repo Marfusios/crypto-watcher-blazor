@@ -8,12 +8,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="BuildWebCompiler" Version="1.12.405" />
 		<PackageReference Include="Crypto.Websocket.Extensions" Version="2.6.40" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.0" PrivateAssets="all" />
 		<PackageReference Include="Blazored.FluentValidation" Version="2.0.0" />
 		<PackageReference Include="Blazored.LocalStorage" Version="4.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+		<PackageReference Include="BuildWebCompiler" Version="1.12.405" />
 	</ItemGroup>
 
 	<ItemGroup>
