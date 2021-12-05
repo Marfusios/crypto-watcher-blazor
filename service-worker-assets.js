@@ -33,7 +33,7 @@
       "url": "_framework\/icudt.dat"
     },
     {
-      "hash": "sha256-2ANzfFviOHN8LqpascD0SrjDjh4eBxKNQqqgUQBTX7k=",
+      "hash": "sha256-JUU7XoD2esXzkvLk3Qfaf0R0KIRe7h78z61JgSpmotY=",
       "url": "_framework\/blazor.boot.json"
     },
     {
@@ -77,7 +77,7 @@
       "url": "_framework\/Crypto.Websocket.Extensions.dll"
     },
     {
-      "hash": "sha256-8H6KN50nczf8YlWCqb9EV7u6sWaW\/qiAdykUikeuc2c=",
+      "hash": "sha256-0B9xHzcsCpTQRVYDn9uea3yTsFqxCt7CA7wqCbp7wQA=",
       "url": "_framework\/CryptoWatcher.Blazor.dll"
     },
     {
@@ -465,13 +465,13 @@
       "url": "icon-512.png"
     },
     {
-      "hash": "sha256-vcI8DPFU0LISNUQVKclR9sFNOZzwangCvk2qptBbAGY=",
+      "hash": "sha256-rzSL8NqywKn2h+XB+wK\/bLV2LpP9N5CTz5BfG3vGxSE=",
       "url": "index.html"
     },
     {
-      "hash": "sha256-x08MLOwlya71JtF7RweYMfpscgdZFh6twP+\/4Unh3+0=",
+      "hash": "sha256-yN0Rqy16PDyMPnVyYOh8gU3ff6llssqv2QHWwTWd0VM=",
       "url": "manifest.json"
     }
   ],
-  "version": "J7RwIX6A"
+  "version": "SYTlJoXc"
 };
