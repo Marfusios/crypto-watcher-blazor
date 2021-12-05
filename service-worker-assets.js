@@ -381,6 +381,10 @@
       "url": "_framework\/Websocket.Client.dll"
     },
     {
+      "hash": "sha256-eATRYc6O8vpqdMMDPrVFzzuXn\/2\/5zWyQst7\/\/41WHk=",
+      "url": "CNAME"
+    },
+    {
       "hash": "sha256-ikrV9lTAItk6pR1YX2LKaq06OcM3RGbu\/HFwwByqrQc=",
       "url": "crypto-watcher.css"
     },
@@ -469,5 +473,5 @@
       "url": "manifest.json"
     }
   ],
-  "version": "VYsPa1Oc"
+  "version": "J7RwIX6A"
 };
