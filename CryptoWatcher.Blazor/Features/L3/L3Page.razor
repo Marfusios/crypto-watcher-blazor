@@ -1,7 +1,226 @@
 ﻿@page "/l3"
+@using Bitfinex.Client.Websocket;
+@using Bitfinex.Client.Websocket.Client;
+@using Bitfinex.Client.Websocket.Websockets;
+@using Crypto.Websocket.Extensions.Core.OrderBooks;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Models;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Sources;
+@using Websocket.Client
+@using System
+@using Crypto.Websocket.Extensions.OrderBooks.SourcesL3
+@implements IDisposable
 
 <h1>L3 Order Book</h1>
 
-@code {
+@if (!string.IsNullOrWhiteSpace(_status))
+{
+    <small>
+        <i class="las la-spinner la-spin"></i>
+        <span>@_status</span>
+    </small>
+}
 
+@if (_bids.Any())
+{
+    <Card>
+        <h3>@_market.ToUpper() @_pair</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Price</th>
+                    <th>Amount</th>
+                    <th>Total</th>
+                    <th>Distance</th>
+                    <th>Price Updated</th>
+                    <th>Amount Updated</th>
+                    <th>Amount Changed</th>
+                </tr>
+            </thead>
+            <tbody>
+            
+            @{
+                var totalAsks = _asks.Length;
+                var counter = 0;
+
+                foreach (var ask in _asks)
+                {
+                    var index = totalAsks - counter;
+                    var total = _asks[counter..totalAsks].Sum(x => x.Amount);
+                    var dis = (1 - _midPrice / ask.Price) * 100;
+                    
+                    <tr>
+                        <td style="color: #F56666"><strong>@index</strong></td>
+                        <td>@ask.Price?.ToString("0.00")</td>
+                        <td>@ask.Amount?.ToString("0.0000")</td>
+                        <td>@total?.ToString("0.0000")</td>
+                        <td>@dis?.ToString("#.0000")%</td>
+                        <td>@ask.PriceUpdatedCount.ToString("#")</td>
+                        <td>@ask.AmountUpdatedCount.ToString("#")</td>
+                        <td>
+                            @if (ask.AmountDifferenceAggregated < 0)
+                            {
+                                <i class="las la-arrow-down"></i>
+                            }
+                            else if (ask.AmountDifferenceAggregated > 0)
+                            {
+                                <i class="las la-arrow-up"></i>
+                            }
+                            @ask.AmountDifferenceAggregated.ToString("#.####")
+                        </td>
+                    </tr>
+                    counter++;
+                }
+
+                counter = 0;
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                
+                foreach (var bid in _bids)
+                {
+                    counter++;
+                    var total = _bids[..counter].Sum(x => x.Amount);
+                    var dis =   (_midPrice / bid.Price - 1) * 100;
+                    
+                    <tr>
+                        <td style="color: #49BC78"><strong>@counter</strong></td>
+                        <td>@bid.Price?.ToString("0.00")</td>
+                        <td>@bid.Amount?.ToString("0.0000")</td>
+                        <td>@total?.ToString("0.0000")</td>
+                        <td>@dis?.ToString("#.0000")%</td>
+                        <td>@bid.PriceUpdatedCount.ToString("#")</td>
+                        <td>@bid.AmountUpdatedCount.ToString("#")</td>
+                        <td>
+                            @if (bid.AmountDifferenceAggregated < 0)
+                            {
+                                <i class="las la-arrow-down"></i>
+                            }
+                            else if (bid.AmountDifferenceAggregated > 0)
+                            {
+                                <i class="las la-arrow-up"></i>
+                            }
+                            @bid.AmountDifferenceAggregated.ToString("#.####")
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </Card>
+}
+
+@code {
+    private readonly CancellationTokenSource _cancellation = new();
+    private readonly List<IDisposable> _streams = new();
+    
+    private readonly string _market = "bitfinex";
+    private readonly string _pair = "BTCUSD";
+    private readonly int _displayedLevels = 20;
+    
+    private string _status = string.Empty;
+    private double _midPrice;
+    
+    private OrderBookLevel[] _bids = Array.Empty<OrderBookLevel>();
+    private OrderBookLevel[] _asks = Array.Empty<OrderBookLevel>();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        DisplayStatus($"Start connecting to {_market}");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        
+        DisplayStatus($"Connecting to {_market}");
+
+        await StartExchange(_market, [_pair], SubscribeToChanges, _cancellation.Token);
+
+        DisplayStatus($"Subscribed to {_market}");
+    }
+
+    private void SubscribeToChanges(ICryptoOrderBook ob)
+    {
+        var sub = ob.OrderBookUpdatedStream.Subscribe(x =>
+        {
+            _midPrice = ob.MidPrice;
+            
+            var bids = ob.BidLevels.Take(_displayedLevels).ToArray();
+            var asks = ob.AskLevels.Take(_displayedLevels).ToArray();
+
+            _bids = bids.OrderByDescending(x => x.Price).ToArray();
+            _asks = asks.OrderByDescending(x => x.Price).ToArray();
+            
+            DisplayStatus(string.Empty);
+        });
+        _streams.Add(sub);
+    }
+
+    private void DisplayStatus(string status)
+    {
+        _status = status;
+        StateHasChanged();
+    }
+
+    private static Task StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var exchangeSafe = (exchange ?? string.Empty).ToLower();
+        return exchangeSafe switch
+        {
+            "bitfinex" => StartBitfinex(pairs, initialized, stoppingToken),
+            _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
+        };
+    }
+    
+    private static async Task StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitfinexValues.ApiWebsocketUrl;
+        var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
+        var client = new BitfinexWebsocketClient(communicator);
+        var source = new BitfinexOrderBookL3Source(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitfinex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.RawBookSubscribeRequest(pair, "100"));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
+
+        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+    
+    private static async Task InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
+        IWebsocketClient client, OrderBookSourceBase source)
+    {
+        source.BufferEnabled = false;
+
+        foreach (var pair in pairs)
+        {
+            var orderBook = new CryptoOrderBook(pair, source);
+            initialized(orderBook);
+        }
+
+        stoppingToken.Register(client.Dispose);
+
+        Console.WriteLine($"Start connecting to {source.ExchangeName}");
+        await client.Start();
+        Console.WriteLine($"Connected to {source.ExchangeName}");
+    }
+    
+    public void Dispose()
+    {
+        foreach (var stream in _streams)
+        {
+            stream.Dispose();
+        }
+    }
 }

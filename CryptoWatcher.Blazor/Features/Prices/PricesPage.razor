@@ -26,6 +26,7 @@
 @using Channel = Bitstamp.Client.Websocket.Channels.Channel;
 @using System.Reactive.Linq
 @using System
+@implements IDisposable
 
 <h1>Crypto Prices</h1>
 
@@ -302,10 +303,9 @@
             stream.Dispose();
         }
 
-        _cancellation.Cancel();
-        _cancellation.Dispose();
+        //_cancellation.Cancel();
+        //_cancellation.Dispose();
     }
 
     private record PriceChange(string Exchange, string Pair, double Price, double PriceDiff);
-
 }
