@@ -1,16 +1,17 @@
-﻿@page "/l3"
-@using Bitfinex.Client.Websocket;
-@using Bitfinex.Client.Websocket.Client;
-@using Bitfinex.Client.Websocket.Websockets;
+﻿@page "/l2"
 @using Crypto.Websocket.Extensions.Core.OrderBooks;
 @using Crypto.Websocket.Extensions.Core.OrderBooks.Models;
 @using Crypto.Websocket.Extensions.Core.OrderBooks.Sources;
 @using Websocket.Client
 @using System
-@using Crypto.Websocket.Extensions.OrderBooks.SourcesL3
+@using Binance.Client.Websocket
+@using Binance.Client.Websocket.Client
+@using Binance.Client.Websocket.Subscriptions
+@using Binance.Client.Websocket.Websockets
+@using Crypto.Websocket.Extensions.OrderBooks.Sources
 @implements IDisposable
 
-<h1>L3 Order Book</h1>
+<h1>L2 Order Book</h1>
 
 @if (!string.IsNullOrWhiteSpace(_status))
 {
@@ -32,7 +33,6 @@
                     <th>Amount</th>
                     <th>Total</th>
                     <th>Distance</th>
-                    <th>Price Updated</th>
                     <th>Amount Updated</th>
                     <th>Amount Changed</th>
                 </tr>
@@ -55,7 +55,6 @@
                         <td>@ask.Amount?.ToString("0.0000")</td>
                         <td>@total?.ToString("0.0000")</td>
                         <td>@dis?.ToString("#.0000")%</td>
-                        <td>@ask.PriceUpdatedCount.ToString("#")</td>
                         <td>@ask.AmountUpdatedCount.ToString("#")</td>
                         <td>
                             @if (ask.AmountDifferenceAggregated < 0)
@@ -81,7 +80,6 @@
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td></td>
                 </tr>
                 
                 foreach (var bid in _bids)
@@ -96,7 +94,6 @@
                         <td>@bid.Amount?.ToString("0.0000")</td>
                         <td>@total?.ToString("0.0000")</td>
                         <td>@dis?.ToString("#.0000")%</td>
-                        <td>@bid.PriceUpdatedCount.ToString("#")</td>
                         <td>@bid.AmountUpdatedCount.ToString("#")</td>
                         <td>
                             @if (bid.AmountDifferenceAggregated < 0)
@@ -121,9 +118,9 @@
     private readonly CancellationTokenSource _cancellation = new();
     private readonly List<IDisposable> _streams = new();
     
-    private readonly string _market = "bitfinex";
-    private readonly string _pair = "BTCUSD";
-    private readonly int _displayedLevels = 20;
+    private readonly string _market = "binance";
+    private readonly string _pair = "BTCUSDT";
+    private readonly int _displayedLevels = 10;
     
     private string _status = string.Empty;
     private double _midPrice;
@@ -171,29 +168,35 @@
         var exchangeSafe = (exchange ?? string.Empty).ToLower();
         return exchangeSafe switch
         {
-            "bitfinex" => StartBitfinex(pairs, initialized, stoppingToken),
+            "binance" => StartBinance(pairs, initialized, stoppingToken),
             _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
         };
     }
     
-    private static async Task StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static async Task StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
-        var url = BitfinexValues.ApiWebsocketUrl;
-        var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
-        var client = new BitfinexWebsocketClient(communicator);
-        var source = new BitfinexOrderBookL3Source(client);
+        var url = BinanceValues.ApiWebsocketUrl;
+        var communicator = new BinanceWebsocketCommunicator(url) { Name = "Binance" };
+        var client = new BinanceWebsocketClient(communicator);
 
-        communicator.ReconnectionHappened.Subscribe(x =>
+        SubscriptionBase[] subscriptions = pairs
+            .Select(x => new OrderBookDiffSubscription(x))
+            .ToArray();
+        client.SetSubscriptions(subscriptions);
+
+        var source = new BinanceOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(async x =>
         {
-            Console.WriteLine($"Bitfinex reconnected, type: {x.Type}");
+            Console.WriteLine($"Binance reconnected, type: {x.Type}");
             foreach (var pair in pairs)
             {
-                // Send subscription request to order book data
-                client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.RawBookSubscribeRequest(pair, "100"));
+                // Binance is special
+                // We need to load snapshot in advance manually via REST call
+                await source.LoadSnapshot(communicator, pair);
             }
         });
-        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
-        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
 
         await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }

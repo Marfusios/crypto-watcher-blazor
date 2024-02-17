@@ -1,0 +1,30 @@
+﻿@import "../../Styles/_Variables.scss";
+
+table td {
+    padding: 0.5rem;
+    padding-left: 1.25rem;
+}
+
+.exchange {
+    color: $primary-color;
+}
+
+.average {
+    color: $primary-color;
+}
+
+.bid {
+    color: $green-500;
+}
+
+.ask {
+    color: $red-500;
+}
+
+.la-arrow-down {
+    color: $red-500;
+}
+
+.la-arrow-up {
+    color: $green-500;
+}
