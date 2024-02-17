@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "CryptoWatcher.Blazor",
   "resources": {
-    "hash": "sha256-pH65keDymyqgzLGHnOOYu9W4CNEZgyh1qI+8vhTyoVM=",
+    "hash": "sha256-XLcuXMcTWXAwhV+Ybi+u2oYXvWDUKYiTHH27B2wulcY=",
     "jsModuleNative": {
       "dotnet.native.8.0.2.jgt5nhn140.js": "sha256-gPMK16QWoJSTxorlZJqcVtbBRTniIQWlLsJN2O4cJHg="
     },
@@ -26,7 +26,7 @@
       "Coinbase.Client.Websocket.wasm": "sha256-TWSlIQgQq5+FyAu9tAXn9y9Uh/xdXGBbo4/dnBH/FdY=",
       "Crypto.Websocket.Extensions.Core.wasm": "sha256-v15GfffSwwj8sw3RsSUXQiCNIf5+Or6UHeVJ+cmWq2k=",
       "Crypto.Websocket.Extensions.wasm": "sha256-C7xW1dzUJgCa/S/JMZRIv8WQ7cGXCpztdUnr7A1TttI=",
-      "CryptoWatcher.Blazor.wasm": "sha256-c1Y9TJ7wHiEKMs7coWAKxOclV60GRZ0FUlI3rkqt9Ko=",
+      "CryptoWatcher.Blazor.wasm": "sha256-dI6yO91z0EaRqQ5uSQkVQqYnTf0V7yPW6zRPXN4J1Hw=",
       "FluentValidation.wasm": "sha256-OSimv5A1VplcdJeNacGUy2pP8QpgEYH0ErqRudW+CBw=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-KrLq8R6MWVe9MdEQU6D5+9NO+OPV2shtEsmF3Be+fa0=",
       "Microsoft.AspNetCore.Components.wasm": "sha256-6i0kznfMJdueClpj194T4LX7hzl74zOo4i6K3daxKG4=",
