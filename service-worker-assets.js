@@ -33,7 +33,7 @@
       "url": "_framework\/icudt_no_CJK.dat"
     },
     {
-      "hash": "sha256-Dc+QgfaHMJKedNv1\/UVC815bC4pdikA0+9k9qCh0aM4=",
+      "hash": "sha256-V8Ph0HlnbWd8607YmJjLwiqq\/LXZRbZe41qqIcANkO4=",
       "url": "_framework\/blazor.boot.json"
     },
     {
@@ -73,7 +73,7 @@
       "url": "_framework\/Crypto.Websocket.Extensions.wasm"
     },
     {
-      "hash": "sha256-dI6yO91z0EaRqQ5uSQkVQqYnTf0V7yPW6zRPXN4J1Hw=",
+      "hash": "sha256-SwUrZoh3WvOrhA21LOhDqpaYZ2Wpcf8C7AlUIGKcEJE=",
       "url": "_framework\/CryptoWatcher.Blazor.wasm"
     },
     {
@@ -453,5 +453,5 @@
       "url": "manifest.json"
     }
   ],
-  "version": "DiyUp162"
+  "version": "W+wLuccu"
 };
