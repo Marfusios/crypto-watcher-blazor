@@ -110,7 +110,7 @@
 
             DisplayStatus($"Connecting to {exchange} (#{count} of {totalCount})");
 
-            await StartExchange(exchange, new[] { pair }, book => streams.Add(book.BidAskUpdatedStream), _cancellation.Token);
+            await StartExchange(exchange, [pair], book => streams.Add(book.BidAskUpdatedStream), _cancellation.Token);
 
             DisplayStatus($"Subscribed to {exchange} (#{count} of {totalCount})");
             count += 1;
@@ -128,7 +128,7 @@
                     x.ExchangeName,
                     x.PairOriginal,
                     x.Quotes.Mid,
-                    _averagePrice - x.Quotes.Mid
+                    x.Quotes.Mid - _averagePrice
                     ))
                 .ToArray();
             DisplayStatus(string.Empty);
