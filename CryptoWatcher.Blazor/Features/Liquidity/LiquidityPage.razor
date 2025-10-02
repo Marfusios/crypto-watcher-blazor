@@ -1,0 +1,570 @@
+@page "/liquidity"
+@using Binance.Client.Websocket;
+@using Binance.Client.Websocket.Client;
+@using Binance.Client.Websocket.Subscriptions;
+@using Binance.Client.Websocket.Websockets;
+@using Bitfinex.Client.Websocket;
+@using Bitfinex.Client.Websocket.Client;
+@using Bitfinex.Client.Websocket.Utils;
+@using Bitfinex.Client.Websocket.Websockets;
+@using Bitstamp.Client.Websocket;
+@using Bitstamp.Client.Websocket.Client;
+@using Bitstamp.Client.Websocket.Communicator;
+@using Bitstamp.Client.Websocket.Channels;
+@using Hyperliquid.Client.Websocket;
+@using Hyperliquid.Client.Websocket.Client;
+@using Hyperliquid.Client.Websocket.Requests.Subscriptions;
+@using Hyperliquid.Client.Websocket.Websockets;
+@using Crypto.Websocket.Extensions.Core.OrderBooks;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Models;
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Sources;
+@using Crypto.Websocket.Extensions.OrderBooks.Sources;
+@using Websocket.Client
+@using System.Reactive.Linq
+@using System
+@implements IDisposable
+
+<h1>Advanced Liquidity Analysis</h1>
+
+@if (!string.IsNullOrWhiteSpace(_status))
+{
+    <small>
+        <i class="las la-spinner la-spin"></i>
+        <span>@_status</span>
+    </small>
+}
+
+@if (_liquidityMetrics.Any())
+{
+    <div class="liquidity-cards">
+        <Card>
+            <h4>Market Overview</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Active Exchanges</span>
+                    <span class="stat-value">@_activeExchanges</span>
+                    <div class="exchange-tags-overview">
+                        @foreach (var exchange in _activeExchangeNames)
+                        {
+                            <span class="exchange-tag">@exchange</span>
+                        }
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Mid Price</span>
+                    <span class="stat-value">@_averageMidPrice.ToString("###,###,###.00")</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Bid Liquidity</span>
+                    <span class="stat-value positive">@_totalBidLiquidity.ToString("###,###.00") BTC</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Ask Liquidity</span>
+                    <span class="stat-value negative">@_totalAskLiquidity.ToString("###,###.00") BTC</span>
+                </div>
+            </div>
+        </Card>
+    </div>
+
+    @foreach (var rangePercent in _priceRanges)
+    {
+        var metrics = _liquidityMetrics.Where(m => m.RangePercent == rangePercent).OrderBy(m => m.Side).ToArray();
+        if (metrics.Any())
+        {
+            <Card>
+                <h4>@rangePercent% from Mid Price</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Side</th>
+                            <th>Total Liquidity (BTC)</th>
+                            <th>Total Liquidity (USD)</th>
+                            <th>Avg Amount Changed</th>
+                            <th>Total Count Changed</th>
+                            <th>Price Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var metric in metrics)
+                        {
+                            <tr>
+                                <td class="@(metric.Side == "Bid" ? "bid-side" : "ask-side")">
+                                    <strong>@metric.Side</strong>
+                                </td>
+                                <td>@metric.TotalLiquidityBtc.ToString("###,###.0000")</td>
+                                <td>@metric.TotalLiquidityUsd.ToString("$###,###,###")</td>
+                                <td>
+                                    @if (metric.AvgAmountChanged < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                    }
+                                    else if (metric.AvgAmountChanged > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                    }
+                                    @metric.AvgAmountChanged.ToString("#.####")
+                                </td>
+                                <td>
+                                    @if (metric.TotalCountChanged < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                    }
+                                    else if (metric.TotalCountChanged > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                    }
+                                    @metric.TotalCountChanged
+                                </td>
+                                <td>
+                                    <div class="price-range-display">
+                                        @foreach (var range in metric.PriceRanges)
+                                        {
+                                            <div class="price-range-item">@range</div>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </Card>
+        }
+    }
+
+    <Card>
+        <h4>Detailed Exchange Breakdown</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Side</th>
+                    <th>Range</th>
+                    <th>Exchange</th>
+                    <th>Liquidity (BTC)</th>
+                    <th>Amount Changed</th>
+                    <th>Count Changed</th>
+                    <th>Levels</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var asks = _exchangeDetails.Where(d => d.Side == "Ask").OrderByDescending(d => d.RangePercent).ThenBy(d => d.Exchange);
+                    var bids = _exchangeDetails.Where(d => d.Side == "Bid").OrderBy(d => d.RangePercent).ThenBy(d => d.Exchange);
+                    var orderedDetails = asks.Concat(bids);
+                }
+                @foreach (var detail in orderedDetails)
+                {
+                    <tr>
+                        <td class="@(detail.Side == "Bid" ? "bid-side" : "ask-side")">
+                            <strong>@detail.Side</strong>
+                        </td>
+                        <td>@detail.RangePercent%</td>
+                        <td class="exchange">@detail.Exchange</td>
+                        <td>@detail.LiquidityBtc.ToString("###,###.0000")</td>
+                        <td>
+                            @if (detail.AmountChanged < 0)
+                            {
+                                <i class="las la-arrow-down"></i>
+                            }
+                            else if (detail.AmountChanged > 0)
+                            {
+                                <i class="las la-arrow-up"></i>
+                            }
+                            @detail.AmountChanged.ToString("#.####")
+                        </td>
+                        <td>
+                            @if (detail.CountChanged < 0)
+                            {
+                                <i class="las la-arrow-down"></i>
+                            }
+                            else if (detail.CountChanged > 0)
+                            {
+                                <i class="las la-arrow-up"></i>
+                            }
+                            @detail.CountChanged
+                        </td>
+                        <td>@detail.LevelCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </Card>
+}
+
+@code {
+    private readonly CancellationTokenSource _cancellation = new();
+    private readonly List<IDisposable> _streams = new();
+    private readonly Dictionary<string, ICryptoOrderBook> _orderBooks = new();
+
+    private readonly Dictionary<string, string> _targetMarkets = new()
+    {
+        { "bitfinex", "BTCUSD" },
+        { "binance", "BTCUSDT" },
+        { "bitstamp", "BTCUSD" },
+        { "hyperliquid", "BTC" }
+    };
+
+    private readonly double[] _priceRanges = { 0.01, 0.05, 0.1 };
+
+    private string _status = string.Empty;
+    private int _activeExchanges;
+    private string[] _activeExchangeNames = Array.Empty<string>();
+    private double _averageMidPrice;
+    private double _totalBidLiquidity;
+    private double _totalAskLiquidity;
+    private LiquidityMetric[] _liquidityMetrics = Array.Empty<LiquidityMetric>();
+    private ExchangeDetail[] _exchangeDetails = Array.Empty<ExchangeDetail>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var markets = _targetMarkets.OrderBy(x => x.Key).ToArray();
+        var count = 1;
+        var totalCount = markets.Length;
+
+        DisplayStatus($"Start connecting to {totalCount} markets");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        var clients = new List<IWebsocketClient>();
+
+        foreach (var market in markets)
+        {
+            var exchange = market.Key;
+            var pair = market.Value;
+
+            var client = await StartExchange(exchange, [pair], (exchangeName, book) =>
+            {
+                _orderBooks[$"{exchangeName}_{pair}"] = book;
+            }, _cancellation.Token);
+            clients.Add(client);
+        }
+
+        // Subscribe to periodic updates (every second)
+        var subscription = Observable
+            .Interval(TimeSpan.FromSeconds(1))
+            .Subscribe(_ =>
+            {
+                CalculateLiquidityMetrics();
+                DisplayStatus(string.Empty);
+            });
+        _streams.Add(subscription);
+
+        foreach (var client in clients)
+        {
+            DisplayStatus($"Connecting to {client.Name} (#{count} of {totalCount})");
+            count += 1;
+        }
+
+        DisplayStatus("Analyzing liquidity...");
+    }
+
+    private void CalculateLiquidityMetrics()
+    {
+        if (!_orderBooks.Any())
+            return;
+
+        var validOrderBooks = _orderBooks.Values.Where(ob => ob.MidPrice > 0).ToArray();
+        if (!validOrderBooks.Any())
+            return;
+
+        _activeExchanges = validOrderBooks.Length;
+        _activeExchangeNames = validOrderBooks.Select(ob => ob.ExchangeName ?? "Unknown").Distinct().OrderBy(x => x).ToArray();
+        _averageMidPrice = validOrderBooks.Average(ob => ob.MidPrice);
+
+        var metrics = new List<LiquidityMetric>();
+        var details = new List<ExchangeDetail>();
+
+        foreach (var rangePercent in _priceRanges)
+        {
+            // Calculate for bids (below mid price)
+            var bidMetrics = CalculateRangeMetrics(validOrderBooks, rangePercent, true);
+            metrics.Add(bidMetrics);
+
+            // Calculate for asks (above mid price)
+            var askMetrics = CalculateRangeMetrics(validOrderBooks, rangePercent, false);
+            metrics.Add(askMetrics);
+
+            // Calculate detailed breakdown per exchange
+            foreach (var ob in validOrderBooks)
+            {
+                var exchangeName = ob.ExchangeName ?? "Unknown";
+                var bidDetail = CalculateExchangeDetail(ob, rangePercent, true, exchangeName);
+                var askDetail = CalculateExchangeDetail(ob, rangePercent, false, exchangeName);
+                details.Add(bidDetail);
+                details.Add(askDetail);
+            }
+        }
+
+        _liquidityMetrics = metrics.ToArray();
+        _exchangeDetails = details.ToArray();
+
+        // Calculate totals
+        _totalBidLiquidity = validOrderBooks.Sum(ob => ob.BidLevels.Take(50).Sum(l => l.Amount ?? 0));
+        _totalAskLiquidity = validOrderBooks.Sum(ob => ob.AskLevels.Take(50).Sum(l => l.Amount ?? 0));
+    }
+
+    private LiquidityMetric CalculateRangeMetrics(ICryptoOrderBook[] orderBooks, double rangePercent, bool isBid)
+    {
+        var side = isBid ? "Bid" : "Ask";
+        double totalLiquidity = 0;
+        double totalAmountChanged = 0;
+        long totalCountChanged = 0;
+        var exchanges = new List<string>();
+        double? globalMinPrice = null;
+        double? globalMaxPrice = null;
+
+        foreach (var ob in orderBooks)
+        {
+            var midPrice = ob.MidPrice;
+            if (midPrice <= 0) continue;
+
+            var rangeFactor = rangePercent / 100.0;
+            double minPrice, maxPrice;
+
+            if (isBid)
+            {
+                maxPrice = midPrice;
+                minPrice = midPrice * (1 - rangeFactor);
+            }
+            else
+            {
+                minPrice = midPrice;
+                maxPrice = midPrice * (1 + rangeFactor);
+            }
+
+            var levels = isBid ? ob.BidLevels : ob.AskLevels;
+            var filteredLevels = levels
+                .Where(l => l.Price >= minPrice && l.Price <= maxPrice)
+                .ToArray();
+
+            if (filteredLevels.Any())
+            {
+                totalLiquidity += filteredLevels.Sum(l => l.Amount ?? 0);
+                totalAmountChanged += filteredLevels.Sum(l => l.AmountDifferenceAggregated);
+                totalCountChanged += filteredLevels.Sum(l => l.CountDifference);
+                exchanges.Add(ob.ExchangeName ?? "Unknown");
+
+                // Track global min/max prices
+                if (globalMinPrice == null || minPrice < globalMinPrice)
+                    globalMinPrice = minPrice;
+                if (globalMaxPrice == null || maxPrice > globalMaxPrice)
+                    globalMaxPrice = maxPrice;
+            }
+        }
+
+        var avgAmountChanged = exchanges.Count > 0 ? totalAmountChanged / exchanges.Count : 0;
+
+        // Create price range array with just min and max
+        var priceRanges = new string[0];
+        if (globalMinPrice.HasValue && globalMaxPrice.HasValue)
+        {
+            priceRanges = new[] { $"{globalMinPrice.Value:F2} - {globalMaxPrice.Value:F2}" };
+        }
+
+        return new LiquidityMetric(
+            rangePercent,
+            side,
+            totalLiquidity,
+            totalLiquidity * _averageMidPrice,
+            avgAmountChanged,
+            totalCountChanged,
+            exchanges.Distinct().ToArray(),
+            priceRanges
+        );
+    }
+
+    private ExchangeDetail CalculateExchangeDetail(ICryptoOrderBook ob, double rangePercent, bool isBid, string exchangeName)
+    {
+        var side = isBid ? "Bid" : "Ask";
+        var midPrice = ob.MidPrice;
+
+        if (midPrice <= 0)
+            return new ExchangeDetail(exchangeName, rangePercent, side, 0, 0, 0, 0);
+
+        var rangeFactor = rangePercent / 100.0;
+        double minPrice, maxPrice;
+
+        if (isBid)
+        {
+            maxPrice = midPrice;
+            minPrice = midPrice * (1 - rangeFactor);
+        }
+        else
+        {
+            minPrice = midPrice;
+            maxPrice = midPrice * (1 + rangeFactor);
+        }
+
+        var levels = isBid ? ob.BidLevels : ob.AskLevels;
+        var filteredLevels = levels
+            .Where(l => l.Price >= minPrice && l.Price <= maxPrice)
+            .ToArray();
+
+        var liquidity = filteredLevels.Sum(l => l.Amount ?? 0);
+        var amountChanged = filteredLevels.Sum(l => l.AmountDifferenceAggregated);
+        var countChanged = filteredLevels.Sum(l => l.CountDifference);
+
+        return new ExchangeDetail(
+            exchangeName,
+            rangePercent,
+            side,
+            liquidity,
+            amountChanged,
+            countChanged,
+            filteredLevels.Length
+        );
+    }
+
+    private void DisplayStatus(string status)
+    {
+        _status = status;
+        StateHasChanged();
+    }
+
+    private static async Task<IWebsocketClient> StartExchange(string exchange, string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var exchangeSafe = (exchange ?? string.Empty).ToLower();
+        return exchangeSafe switch
+        {
+            "binance" => await StartBinance(pairs, initialized, stoppingToken),
+            "bitfinex" => await StartBitfinex(pairs, initialized, stoppingToken),
+            "bitstamp" => await StartBitstamp(pairs, initialized, stoppingToken),
+            "hyperliquid" => await StartHyperliquid(pairs, initialized, stoppingToken),
+            _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
+        };
+    }
+
+    private static async Task<IWebsocketClient> StartBinance(string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BinanceValues.ApiWebsocketUrl;
+        var communicator = new BinanceWebsocketCommunicator(url) { Name = "Binance" };
+        var client = new BinanceWebsocketClient(communicator);
+
+        SubscriptionBase[] subscriptions = pairs
+            .Select(x => new OrderBookDiffSubscription(x))
+            .ToArray();
+        client.SetSubscriptions(subscriptions);
+
+        var source = new BinanceOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(async x =>
+        {
+            Console.WriteLine($"Binance reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                await source.LoadSnapshot(communicator, pair);
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source, "binance");
+    }
+
+    private static async Task<IWebsocketClient> StartBitfinex(string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitfinexValues.ApiWebsocketUrl;
+        var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
+        var client = new BitfinexWebsocketClient(communicator);
+        var source = new BitfinexOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitfinex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.BookSubscribeRequest(pair,
+                    BitfinexPrecision.P0, BitfinexFrequency.Realtime, "100"));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source, "bitfinex");
+    }
+
+    private static async Task<IWebsocketClient> StartBitstamp(string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitstampValues.ApiWebsocketUrl;
+        var communicator = new BitstampWebsocketCommunicator(url) { Name = "Bitstamp" };
+        var client = new BitstampWebsocketClient(communicator);
+        var source = new BitstampOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitstamp reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new Bitstamp.Client.Websocket.Requests.SubscribeRequest(pair, Channel.OrderBook));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Data.Message}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source, "bitstamp");
+    }
+
+    private static async Task<IWebsocketClient> StartHyperliquid(string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = HyperliquidValues.MainnetWebsocketApiUrl;
+        var communicator = new HyperliquidWebsocketCommunicator(url) { Name = "Hyperliquid" };
+        var client = new HyperliquidWebsocketClient(communicator);
+        var source = new HyperliquidOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new L2BookSubscribeRequest(pair));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source, "hyperliquid");
+    }
+
+    private static async Task<IWebsocketClient> InitOrderBooks(string[] pairs, Action<string, ICryptoOrderBook> initialized, CancellationToken stoppingToken,
+        IWebsocketClient client, OrderBookSourceBase source, string exchangeName)
+    {
+        source.BufferEnabled = false;
+
+        foreach (var pair in pairs)
+        {
+            var orderBook = new CryptoOrderBook(pair, source);
+            initialized(exchangeName, orderBook);
+        }
+
+        Console.WriteLine($"Start connecting to {source.ExchangeName}");
+        await client.Start();
+        Console.WriteLine($"Connected to {source.ExchangeName}");
+
+        return client;
+    }
+
+    public void Dispose()
+    {
+        foreach (var stream in _streams)
+        {
+            stream.Dispose();
+        }
+    }
+
+    private record LiquidityMetric(
+        double RangePercent,
+        string Side,
+        double TotalLiquidityBtc,
+        double TotalLiquidityUsd,
+        double AvgAmountChanged,
+        long TotalCountChanged,
+        string[] Exchanges,
+        string[] PriceRanges
+    );
+
+    private record ExchangeDetail(
+        string Exchange,
+        double RangePercent,
+        string Side,
+        double LiquidityBtc,
+        double AmountChanged,
+        long CountChanged,
+        int LevelCount
+    );
+}
