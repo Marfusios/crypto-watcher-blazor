@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "CryptoWatcher.Blazor",
   "resources": {
-    "hash": "sha256-r52TPosfbkAc/ofgAjE0cQD/PGu2GdxiNa7+7WABCZY=",
+    "hash": "sha256-lqtmKdCQwPdS8nsm6Chdj19Sa2jM4+l/eBzXHFwh5Pw=",
     "jsModuleNative": {
       "dotnet.native.8.0.20.elargmqivm.js": "sha256-D0bzod5lwwSzPR43JC8TTCcZKw+3jIHOk8CZFCRj5is="
     },
@@ -27,7 +27,7 @@
       "Coinbase.Client.Websocket.wasm": "sha256-u3sO6dbKLVztmgQ4mTlpavwFsKVc+NvKMSflA2IsirQ=",
       "Crypto.Websocket.Extensions.Core.wasm": "sha256-kyMA9WfaFMQ+GAqJcX0WkxG++7iW0tB7ZQUjbME+E50=",
       "Crypto.Websocket.Extensions.wasm": "sha256-+8mH5jin3gO4W9WHforme79+V01YE4Kx/l/BxpqgOoQ=",
-      "CryptoWatcher.Blazor.wasm": "sha256-ADAAh78wwa8g1NhKaXmIMpUM/Sdwu2ENw0cRY3Lk8CI=",
+      "CryptoWatcher.Blazor.wasm": "sha256-i4tFFnMtTNsI1OBjqvgnV2Yi1k1cBH0Ugi95olOJXQ4=",
       "FluentValidation.wasm": "sha256-OSimv5A1VplcdJeNacGUy2pP8QpgEYH0ErqRudW+CBw=",
       "Hyperliquid.Client.Websocket.wasm": "sha256-2JdFSUTc6AECSFvZF898yIBuINax90DUWcKy8ylI99g=",
       "Luno.Client.Websocket.wasm": "sha256-uqe0bzgf84VSkzCt2+wnkNMaSE1u9RVPicp3FWMPlEA=",
@@ -67,7 +67,7 @@
       "System.IO.Hashing.wasm": "sha256-oyK7hs8mVLqDPpb2XY7nGm9gh1q+zwT/tnRIFqrsCC0=",
       "System.IO.Pipelines.wasm": "sha256-pyxZLnYyQNjsq5t5AWyWJaGWQ8ULcoNCJXRg//MqLxA=",
       "System.Linq.Expressions.wasm": "sha256-xdsthhI1fO4k56SlHmSuayaKH9MwIOk30mp1lZtSfWk=",
-      "System.Linq.wasm": "sha256-Xfoj2vpEBlTRYhdYdvbqwkBYcHt03bx7QN49TQf5QrQ=",
+      "System.Linq.wasm": "sha256-FEt0TlCGtKDkQ7AsmKKQKvZ6MiamS1JYps+GZWvyADE=",
       "System.Memory.wasm": "sha256-eM/0IHZzayuHEsS+doGT6RqVbgYXp7c3h8CXKnowgV0=",
       "System.Net.Http.wasm": "sha256-oQcNbqZ+86eBUuznT20F3LGmeUzFAJXTRke7hEuoKPw=",
       "System.Net.Primitives.wasm": "sha256-qDr0UF4R3ZPhnaDcPYSA6fuj0j1u9WiMYFk9vQiMZbs=",
@@ -78,7 +78,7 @@
       "System.Private.Uri.wasm": "sha256-I8bnG+Vgl+yNAQi8m6uommMabrvrn3hTVfWQjmkGLls=",
       "System.Private.Xml.Linq.wasm": "sha256-xBYDpkef0MRdblprBsm/Ns/Mz/LU6XxtuKpN9sVCZJU=",
       "System.Private.Xml.wasm": "sha256-oFLpNT0hFzEdzxUFAWzGMpfssXPk632bx02AltuPy08=",
-      "System.Reactive.wasm": "sha256-G5mosgSZqPU4CSN7fDxqcZzmoT+fsQeR6+vk7is+i6o=",
+      "System.Reactive.wasm": "sha256-GnOcmkCLpM1bp+VJCwfK/NFXajbRDPrSLXp+1JcelPc=",
       "System.Reflection.Emit.ILGeneration.wasm": "sha256-ElV2cpt8jh/UpbqKGg7bLjdC5qvjZ44e3PDW49poCAE=",
       "System.Reflection.Emit.Lightweight.wasm": "sha256-Czx9uA+ysaGqrmpBwo+iTVz3rOyPBtqU3IJexfY1nXU=",
       "System.Reflection.Emit.wasm": "sha256-sTHXPNP7PFzV1U/KIFq3X4OJey+f2VJ2eUB780JQiUE=",

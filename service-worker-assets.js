@@ -33,7 +33,7 @@
       "url": "_framework\/icudt_no_CJK.dat"
     },
     {
-      "hash": "sha256-DuD7d2UggQMfCR0FPgl1LMKxAp0B2uKlE38ytsB4D94=",
+      "hash": "sha256-RGT5W2FQ2mc5udqzEIN8GcI510kylT3ReC05EOsvRO8=",
       "url": "_framework\/blazor.boot.json"
     },
     {
@@ -77,7 +77,7 @@
       "url": "_framework\/Crypto.Websocket.Extensions.wasm"
     },
     {
-      "hash": "sha256-ADAAh78wwa8g1NhKaXmIMpUM\/Sdwu2ENw0cRY3Lk8CI=",
+      "hash": "sha256-i4tFFnMtTNsI1OBjqvgnV2Yi1k1cBH0Ugi95olOJXQ4=",
       "url": "_framework\/CryptoWatcher.Blazor.wasm"
     },
     {
@@ -237,7 +237,7 @@
       "url": "_framework\/System.Linq.Expressions.wasm"
     },
     {
-      "hash": "sha256-Xfoj2vpEBlTRYhdYdvbqwkBYcHt03bx7QN49TQf5QrQ=",
+      "hash": "sha256-FEt0TlCGtKDkQ7AsmKKQKvZ6MiamS1JYps+GZWvyADE=",
       "url": "_framework\/System.Linq.wasm"
     },
     {
@@ -281,7 +281,7 @@
       "url": "_framework\/System.Private.Xml.wasm"
     },
     {
-      "hash": "sha256-G5mosgSZqPU4CSN7fDxqcZzmoT+fsQeR6+vk7is+i6o=",
+      "hash": "sha256-GnOcmkCLpM1bp+VJCwfK\/NFXajbRDPrSLXp+1JcelPc=",
       "url": "_framework\/System.Reactive.wasm"
     },
     {
@@ -393,12 +393,20 @@
       "url": "CNAME"
     },
     {
-      "hash": "sha256-xr3iCyx6T4e2baC6FPyILo95DKkWQZPE4OmwxBhIAww=",
+      "hash": "sha256-m\/EorxW1U9hS7axUPBUB2DKvRfJaIMUfLdh\/qo\/L\/wE=",
       "url": "crypto-watcher.css"
     },
     {
-      "hash": "sha256-BrCvz7SnDKnHAEley+vGAWetpamgJzTvGUXN\/LV54ws=",
+      "hash": "sha256-bwPHSqteFLahVviJUTv\/oVdVI8bRsGHDKo5elY4n+sQ=",
+      "url": "crypto-watcher.css.map"
+    },
+    {
+      "hash": "sha256-8o6901xWB8fWSa4uBut8gzwTkClbnqbNL2eeVRWgoFs=",
       "url": "crypto-watcher.min.css"
+    },
+    {
+      "hash": "sha256-SNe0\/Tz7xfoUJB5lhojLRXuDVfL8Ty\/mbb4h2BsR3YA=",
+      "url": "crypto-watcher.min.css.map"
     },
     {
       "hash": "sha256-pbmxcEyWDhPP4c1OAFDsQOxgPLj6ZUtGWu3bFhCTWMY=",
@@ -481,5 +489,5 @@
       "url": "manifest.json"
     }
   ],
-  "version": "JjK2RbW2"
+  "version": "heRgP8Ui"
 };
