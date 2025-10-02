@@ -8,6 +8,21 @@
 @using Binance.Client.Websocket.Client
 @using Binance.Client.Websocket.Subscriptions
 @using Binance.Client.Websocket.Websockets
+@using Bitfinex.Client.Websocket
+@using Bitfinex.Client.Websocket.Client
+@using Bitfinex.Client.Websocket.Utils
+@using Bitfinex.Client.Websocket.Websockets
+@using Bitmex.Client.Websocket
+@using Bitmex.Client.Websocket.Client
+@using Bitmex.Client.Websocket.Websockets
+@using Bitstamp.Client.Websocket
+@using Bitstamp.Client.Websocket.Client
+@using Bitstamp.Client.Websocket.Communicator
+@using Bitstamp.Client.Websocket.Channels
+@using Hyperliquid.Client.Websocket
+@using Hyperliquid.Client.Websocket.Client
+@using Hyperliquid.Client.Websocket.Requests.Subscriptions
+@using Hyperliquid.Client.Websocket.Websockets
 @using Crypto.Websocket.Extensions.OrderBooks.Sources
 @implements IDisposable
 
@@ -24,7 +39,30 @@
 @if (_bids.Any())
 {
     <Card>
-        <h4>@_market.ToUpper() @_pair</h4>
+        @if (_isEditing)
+        {
+            <div class="l2-controls">
+                <label>
+                    Exchange:
+                    <select @bind="_selectedExchange" @bind:after="OnExchangeChanged">
+                        @foreach (var exchange in _availableExchanges)
+                        {
+                            <option value="@exchange">@exchange</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    Pair:
+                    <input type="text" @bind="_selectedPair" />
+                </label>
+                <button @onclick="ApplyChangesAsync">Apply</button>
+                <button @onclick="CancelEditing">Cancel</button>
+            </div>
+        }
+        else
+        {
+            <h4 @onclick="StartEditing" style="cursor: pointer;">@_currentExchange.ToUpper() @_currentPair</h4>
+        }
         <table>
             <thead>
                 <tr>
@@ -33,7 +71,7 @@
                     <th>Amount</th>
                     <th>Total</th>
                     <th>Distance</th>
-                    <th>Amount Updated</th>
+                    <th>Counts</th>
                     <th>Amount Changed</th>
                 </tr>
             </thead>
@@ -55,17 +93,52 @@
                         <td>@ask.Amount?.ToString("0.0000")</td>
                         <td>@total?.ToString("0.0000")</td>
                         <td>@dis?.ToString("#.0000")%</td>
-                        <td>@ask.AmountUpdatedCount.ToString("#")</td>
                         <td>
-                            @if (ask.AmountDifferenceAggregated < 0)
-                            {
-                                <i class="las la-arrow-down"></i>
-                            }
-                            else if (ask.AmountDifferenceAggregated > 0)
-                            {
-                                <i class="las la-arrow-up"></i>
-                            }
-                            @ask.AmountDifferenceAggregated.ToString("#.####")
+                            <div style="display: flex; flex-direction: row">
+                                <div>
+                                    @if (ask.Count > 0)
+                                    {
+                                        @ask.Count.ToString()
+                                    }
+                                </div>
+                                <div style="margin-left: 10px">
+                                    @if (ask.CountDifference < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                        @ask.CountDifference.ToString()
+                                    }
+                                    else if (ask.CountDifference > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                        @ask.CountDifference.ToString()
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; flex-direction: row">
+                                <div>
+                                    @if (ask.AmountDifferenceAggregated < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                    }
+                                    else if (ask.AmountDifferenceAggregated > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                    }
+                                    @ask.AmountDifferenceAggregated.ToString("#.####")
+                                </div>
+                                
+                                <div style="flex-grow:1;"></div>
+                                
+                                <div>
+                                    @if (ask.AmountUpdatedCount > 0)
+                                    {
+                                        @ask.AmountUpdatedCount.ToString("#")
+                                        <i class="las la-sync"></i>
+                                    }
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     counter++;
@@ -94,17 +167,52 @@
                         <td>@bid.Amount?.ToString("0.0000")</td>
                         <td>@total?.ToString("0.0000")</td>
                         <td>@dis?.ToString("#.0000")%</td>
-                        <td>@bid.AmountUpdatedCount.ToString("#")</td>
+                       <td>
+                            <div style="display: flex; flex-direction: row">
+                                <div>
+                                    @if (bid.Count > 0)
+                                    {
+                                        @bid.Count.ToString()
+                                    }
+                                </div>
+                                <div style="margin-left: 10px">
+                                    @if (bid.CountDifference < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                        @bid.CountDifference.ToString()
+                                    }
+                                    else if (bid.CountDifference > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                        @bid.CountDifference.ToString()
+                                    }
+                                </div>
+                            </div>
+                        </td>
                         <td>
-                            @if (bid.AmountDifferenceAggregated < 0)
-                            {
-                                <i class="las la-arrow-down"></i>
-                            }
-                            else if (bid.AmountDifferenceAggregated > 0)
-                            {
-                                <i class="las la-arrow-up"></i>
-                            }
-                            @bid.AmountDifferenceAggregated.ToString("#.####")
+                            <div style="display: flex; flex-direction: row">
+                                <div>
+                                    @if (bid.AmountDifferenceAggregated < 0)
+                                    {
+                                        <i class="las la-arrow-down"></i>
+                                    }
+                                    else if (bid.AmountDifferenceAggregated > 0)
+                                    {
+                                        <i class="las la-arrow-up"></i>
+                                    }
+                                    @bid.AmountDifferenceAggregated.ToString("#.####")
+                                </div>
+                                
+                                <div style="flex-grow:1;"></div>
+                                
+                                <div>
+                                    @if (bid.AmountUpdatedCount > 0)
+                                    {
+                                        @bid.AmountUpdatedCount.ToString("#")
+                                        <i class="las la-sync"></i>
+                                    }
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 }
@@ -115,29 +223,115 @@
 }
 
 @code {
-    private readonly CancellationTokenSource _cancellation = new();
+    private CancellationTokenSource _cancellation = new();
     private readonly List<IDisposable> _streams = new();
-    
-    private readonly string _market = "binance";
-    private readonly string _pair = "BTCUSDT";
+    private IWebsocketClient? _currentClient;
+
+    private readonly Dictionary<string, string> _defaultPairs = new()
+    {
+        { "bitmex", "XBTUSD" },
+        { "bitfinex", "BTCUSD" },
+        { "binance", "BTCUSDT" },
+        { "bitstamp", "BTCUSD" },
+        { "hyperliquid", "BTC" }
+    };
+
+    private readonly string[] _availableExchanges = ["binance", "bitfinex", "bitmex", "bitstamp", "hyperliquid"];
+    private string _currentExchange = "binance";
+    private string _currentPair = "BTCUSDT";
+    private string _selectedExchange = "binance";
+    private string _selectedPair = "BTCUSDT";
+    private bool _isEditing = false;
     private readonly int _displayedLevels = 10;
-    
+
     private string _status = string.Empty;
     private double _midPrice;
-    
+
     private OrderBookLevel[] _bids = Array.Empty<OrderBookLevel>();
     private OrderBookLevel[] _asks = Array.Empty<OrderBookLevel>();
-    
+
     protected override async Task OnInitializedAsync()
     {
-        DisplayStatus($"Start connecting to {_market}");
+        DisplayStatus($"Start connecting to {_currentExchange}");
         await Task.Delay(TimeSpan.FromSeconds(1));
-        
-        DisplayStatus($"Connecting to {_market}");
 
-        await StartExchange(_market, [_pair], SubscribeToChanges, _cancellation.Token);
+        DisplayStatus($"Connecting to {_currentExchange}");
 
-        DisplayStatus($"Subscribed to {_market}");
+        _currentClient = await StartExchange(_currentExchange, [_currentPair], SubscribeToChanges, _cancellation.Token);
+
+        DisplayStatus($"Subscribed to {_currentExchange}");
+    }
+
+    private void StartEditing()
+    {
+        _selectedExchange = _currentExchange;
+        _selectedPair = _currentPair;
+        _isEditing = true;
+    }
+
+    private void CancelEditing()
+    {
+        _isEditing = false;
+    }
+
+    private void OnExchangeChanged()
+    {
+        if (_defaultPairs.TryGetValue(_selectedExchange, out var defaultPair))
+        {
+            _selectedPair = defaultPair;
+        }
+    }
+
+    private async Task ApplyChangesAsync()
+    {
+        _isEditing = false;
+
+        // Disconnect current connection
+        foreach (var stream in _streams)
+        {
+            stream.Dispose();
+        }
+        _streams.Clear();
+
+        try
+        {
+            _currentClient?.Dispose();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+
+        _currentClient = null;
+
+        try
+        {
+            _cancellation.Cancel();
+            _cancellation.Dispose();
+        }
+        catch
+        {
+            // Ignore cancellation errors
+        }
+
+        _cancellation = new CancellationTokenSource();
+
+        _bids = Array.Empty<OrderBookLevel>();
+        _asks = Array.Empty<OrderBookLevel>();
+
+        // Update current values
+        _currentExchange = _selectedExchange;
+        _currentPair = _selectedPair;
+
+        // Connect to new exchange/pair
+        DisplayStatus($"Start connecting to {_currentExchange}");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        DisplayStatus($"Connecting to {_currentExchange}");
+
+        _currentClient = await StartExchange(_currentExchange, [_currentPair], SubscribeToChanges, _cancellation.Token);
+
+        DisplayStatus($"Subscribed to {_currentExchange}");
     }
 
     private void SubscribeToChanges(ICryptoOrderBook ob)
@@ -163,17 +357,21 @@
         StateHasChanged();
     }
 
-    private static Task StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static async Task<IWebsocketClient> StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var exchangeSafe = (exchange ?? string.Empty).ToLower();
         return exchangeSafe switch
         {
-            "binance" => StartBinance(pairs, initialized, stoppingToken),
+            "binance" => await StartBinance(pairs, initialized, stoppingToken),
+            "bitfinex" => await StartBitfinex(pairs, initialized, stoppingToken),
+            "bitmex" => await StartBitmex(pairs, initialized, stoppingToken),
+            "bitstamp" => await StartBitstamp(pairs, initialized, stoppingToken),
+            "hyperliquid" => await StartHyperliquid(pairs, initialized, stoppingToken),
             _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
         };
     }
-    
-    private static async Task StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+
+    private static async Task<IWebsocketClient> StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = BinanceValues.ApiWebsocketUrl;
         var communicator = new BinanceWebsocketCommunicator(url) { Name = "Binance" };
@@ -198,10 +396,93 @@
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
-    
-    private static async Task InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
+
+    private static async Task<IWebsocketClient> StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitfinexValues.ApiWebsocketUrl;
+        var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
+        var client = new BitfinexWebsocketClient(communicator);
+        var source = new BitfinexOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitfinex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new Bitfinex.Client.Websocket.Requests.Subscriptions.BookSubscribeRequest(pair,
+                    BitfinexPrecision.P0, BitfinexFrequency.Realtime, "100"));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+
+    private static async Task<IWebsocketClient> StartBitmex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitmexValues.ApiWebsocketUrl;
+        var communicator = new BitmexWebsocketCommunicator(url) { Name = "Bitmex" };
+        var client = new BitmexWebsocketClient(communicator);
+        var source = new BitmexOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitmex reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new Bitmex.Client.Websocket.Requests.BookSubscribeRequest(pair));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex disconnected, type: {x.Type}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+
+    private static async Task<IWebsocketClient> StartBitstamp(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = BitstampValues.ApiWebsocketUrl;
+        var communicator = new BitstampWebsocketCommunicator(url) { Name = "Bitstamp" };
+        var client = new BitstampWebsocketClient(communicator);
+        var source = new BitstampOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Bitstamp reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new Bitstamp.Client.Websocket.Requests.SubscribeRequest(pair, Channel.OrderBook));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp disconnected, type: {x.Type}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Data.Message}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+
+    private static async Task<IWebsocketClient> StartHyperliquid(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = HyperliquidValues.MainnetWebsocketApiUrl;
+        var communicator = new HyperliquidWebsocketCommunicator(url) { Name = "Hyperliquid" };
+        var client = new HyperliquidWebsocketClient(communicator);
+        var source = new HyperliquidOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                client.Send(new L2BookSubscribeRequest(pair));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));
+
+        return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+
+    private static async Task<IWebsocketClient> InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
         IWebsocketClient client, OrderBookSourceBase source)
     {
         source.BufferEnabled = false;
@@ -212,11 +493,11 @@
             initialized(orderBook);
         }
 
-        stoppingToken.Register(client.Dispose);
-
         Console.WriteLine($"Start connecting to {source.ExchangeName}");
         await client.Start();
         Console.WriteLine($"Connected to {source.ExchangeName}");
+
+        return client;
     }
     
     public void Dispose()

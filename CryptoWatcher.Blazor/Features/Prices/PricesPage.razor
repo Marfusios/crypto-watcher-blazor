@@ -26,6 +26,10 @@
 @using Channel = Bitstamp.Client.Websocket.Channels.Channel;
 @using System.Reactive.Linq
 @using System
+@using Hyperliquid.Client.Websocket
+@using Hyperliquid.Client.Websocket.Client
+@using Hyperliquid.Client.Websocket.Requests.Subscriptions
+@using Hyperliquid.Client.Websocket.Websockets
 @implements IDisposable
 
 <h1>Crypto Prices</h1>
@@ -85,8 +89,9 @@
             { "bitmex", "XBTUSD" },
             { "bitfinex", "BTCUSD" },
             { "binance", "BTCUSDT" },
-            // { "coinbase", "BTC-USD" },
-            { "bitstamp", "BTCUSD" }
+            //{ "coinbase", "BTC-USD" },
+            { "bitstamp", "BTCUSD" },
+            { "hyperliquid", "BTC" }
         };
 
     private string _status = string.Empty;
@@ -103,29 +108,27 @@
         await Task.Delay(TimeSpan.FromSeconds(1));
 
         var streams = new List<IObservable<IOrderBookChangeInfo>>();
+        var clients = new List<IWebsocketClient>();
+        
         foreach (var market in markets)
         {
             var exchange = market.Key;
             var pair = market.Value;
-
-            DisplayStatus($"Connecting to {exchange} (#{count} of {totalCount})");
-
-            await StartExchange(exchange, [pair], book => streams.Add(book.BidAskUpdatedStream), _cancellation.Token);
-
-            DisplayStatus($"Subscribed to {exchange} (#{count} of {totalCount})");
-            count += 1;
+            
+            var client = StartExchange(exchange, [pair], book => streams.Add(book.BidAskUpdatedStream), _cancellation.Token);
+            clients.Add(client);
         }
-
-        DisplayStatus("Waiting for price change...");
-
-        var subscription = streams.CombineLatest().Subscribe(changes =>
+        
+        var subscription = streams
+            .CombineLatest()
+            .Subscribe(changes =>
         {
             _averagePrice = changes.Average(x => x.Quotes.Mid);
 
             _changes = changes
                 .OrderBy(x => x.ExchangeName)
                 .Select(x => new PriceChange(
-                    x.ExchangeName,
+                    x.ExchangeName ?? string.Empty,
                     x.PairOriginal,
                     x.Quotes.Mid,
                     x.Quotes.Mid - _averagePrice
@@ -134,6 +137,16 @@
             DisplayStatus(string.Empty);
         });
         _streams.Add(subscription);
+
+        foreach (var client in clients)
+        {
+            DisplayStatus($"Connecting to {client.Name} (#{count} of {totalCount})");
+            await client.Start();
+            DisplayStatus($"Subscribed to {client.Name} (#{count} of {totalCount})");
+            count += 1;
+        }
+        
+        DisplayStatus("Waiting for price change...");
     }
 
     private void DisplayStatus(string status)
@@ -142,7 +155,7 @@
         StateHasChanged();
     }
 
-    private static Task StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var exchangeSafe = (exchange ?? string.Empty).ToLower();
         return exchangeSafe switch
@@ -152,11 +165,12 @@
             "binance" => StartBinance(pairs, initialized, stoppingToken),
             "coinbase" => StartCoinbase(pairs, initialized, stoppingToken),
             "bitstamp" => StartBitstamp(pairs, initialized, stoppingToken),
+            "hyperliquid" => StartHyperliquid(pairs, initialized, stoppingToken),
             _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
         };
     }
 
-    private static async Task StartBitmex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartBitmex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = BitmexValues.ApiWebsocketUrl;
         var communicator = new BitmexWebsocketCommunicator(url) { Name = "Bitmex" };
@@ -174,10 +188,10 @@
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitmex disconnected, type: {x.Type}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartBitfinex(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = BitfinexValues.ApiWebsocketUrl;
         var communicator = new BitfinexWebsocketCommunicator(url) { Name = "Bitfinex" };
@@ -197,10 +211,10 @@
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitfinex disconnected, type: {x.Type}"));
         client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitfinex error received, {x.Msg}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartBinance(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = BinanceValues.ApiWebsocketUrl;
         var communicator = new BinanceWebsocketCommunicator(url) { Name = "Binance" };
@@ -225,10 +239,10 @@
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Binance disconnected, type: {x.Type}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task StartCoinbase(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartCoinbase(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = CoinbaseValues.ApiWebsocketUrl;
         var communicator = new CoinbaseWebsocketCommunicator(url) { Name = "Coinbase" };
@@ -250,10 +264,10 @@
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase disconnected, type: {x.Type}"));
         client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Coinbase error received, {x.Message}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task StartBitstamp(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static IWebsocketClient StartBitstamp(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = BitstampValues.ApiWebsocketUrl;
         var communicator = new BitstampWebsocketCommunicator(url) { Name = "Bitstamp" };
@@ -273,12 +287,33 @@
             }
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Bitstamp disconnected, type: {x.Type}"));
-        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Message}"));
+        client.Streams.ErrorStream.Subscribe(x => Console.WriteLine($"Bitstamp error received, {x.Data.Message}"));
 
-        await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
+    }
+    
+    private static IWebsocketClient StartHyperliquid(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    {
+        var url = HyperliquidValues.MainnetWebsocketApiUrl;
+        var communicator = new HyperliquidWebsocketCommunicator(url) { Name = "Hyperliquid" };
+        var client = new HyperliquidWebsocketClient(communicator);
+        var source = new HyperliquidOrderBookSource(client);
+
+        communicator.ReconnectionHappened.Subscribe(x =>
+        {
+            Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
+            foreach (var pair in pairs)
+            {
+                // Send subscription request to order book data
+                client.Send(new L2BookSubscribeRequest(pair));
+            }
+        });
+        communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));
+
+        return InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
+    private static IWebsocketClient InitOrderBooks(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken,
         IWebsocketClient client, OrderBookSourceBase source)
     {
         source.BufferEnabled = false;
@@ -290,10 +325,7 @@
         }
 
         stoppingToken.Register(client.Dispose);
-
-        Console.WriteLine($"Start connecting to {source.ExchangeName}");
-        await client.Start();
-        Console.WriteLine($"Connected to {source.ExchangeName}");
+        return client;
     }
 
     public void Dispose()
