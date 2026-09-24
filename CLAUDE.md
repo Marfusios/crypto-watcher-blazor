@@ -9,7 +9,11 @@ Blazor WebAssembly application showcasing real-time cryptocurrency market data u
 - L2 order book data (aggregated price levels)
 - L3 order book data (individual order tracking with price/amount updates)
 
-Supported exchanges: Bitmex, Bitfinex, Binance, Bitstamp, Hyperliquid (Coinbase currently disabled)
+Supported exchanges: Bitfinex, Binance, Bitstamp, Coinbase, Hyperliquid (Bitmex disabled since the BitMEX exchange closed in September 2026)
+
+Exchange feed notes:
+- Coinbase subscribes to the public `level2_batch` channel, plain `level2` requires API keys. It streams the full book (~40k levels), so it's used only on the Prices page, `BidLevels`/`AskLevels` materialization on the L2 page can't keep up
+- Hyperliquid uses the fast `l2Book` mode (every ~0.5s, 5 levels) on Prices and L2 pages, Liquidity page keeps the slower 20-level feed for depth
 
 ## Architecture
 

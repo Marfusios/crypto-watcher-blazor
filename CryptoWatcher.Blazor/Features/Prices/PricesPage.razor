@@ -14,7 +14,6 @@
 @using Bitstamp.Client.Websocket.Client;
 @using Bitstamp.Client.Websocket.Communicator;
 @using Coinbase.Client.Websocket;
-@using Coinbase.Client.Websocket.Channels
 @using Coinbase.Client.Websocket.Client;
 @using Coinbase.Client.Websocket.Communicator;
 @using Coinbase.Client.Websocket.Requests;
@@ -28,8 +27,8 @@
 @using System
 @using Hyperliquid.Client.Websocket
 @using Hyperliquid.Client.Websocket.Client
-@using Hyperliquid.Client.Websocket.Requests.Subscriptions
 @using Hyperliquid.Client.Websocket.Websockets
+@using CryptoWatcher.Blazor.Features.Shared.Exchanges
 @implements IDisposable
 
 <h1>Crypto Prices</h1>
@@ -86,10 +85,10 @@
 
     private readonly Dictionary<string, string> _targetMarkets = new()
         {
-            { "bitmex", "XBTUSD" },
+            //{ "bitmex", "XBTUSD" }, // BitMEX exchange closed in September 2026
             { "bitfinex", "BTCUSD" },
             { "binance", "BTCUSDT" },
-            //{ "coinbase", "BTC-USD" },
+            { "coinbase", "BTC-USD" },
             { "bitstamp", "BTCUSD" },
             { "hyperliquid", "BTC" }
         };
@@ -255,10 +254,12 @@
             foreach (var pair in pairs)
             {
                 // Send subscription request to order book data
-                client.Send(new SubscribeRequest(
-                                                new[] { pair },
-                                                ChannelSubscriptionType.Level2
-                                                ));
+                // (plain 'level2' channel requires authentication, the batched one is public)
+                client.Send(new SubscribeRequest
+                {
+                    ProductIds = new[] { pair },
+                    Channels = new[] { "level2_batch" }
+                });
             }
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Coinbase disconnected, type: {x.Type}"));
@@ -304,8 +305,8 @@
             Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
             foreach (var pair in pairs)
             {
-                // Send subscription request to order book data
-                client.Send(new L2BookSubscribeRequest(pair));
+                // Send subscription request to order book data (fast mode, top of the book is enough here)
+                client.Send(new HyperliquidFastL2BookSubscribeRequest(pair));
             }
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));

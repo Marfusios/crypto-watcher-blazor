@@ -21,9 +21,9 @@
 @using Bitstamp.Client.Websocket.Channels
 @using Hyperliquid.Client.Websocket
 @using Hyperliquid.Client.Websocket.Client
-@using Hyperliquid.Client.Websocket.Requests.Subscriptions
 @using Hyperliquid.Client.Websocket.Websockets
 @using Crypto.Websocket.Extensions.OrderBooks.Sources
+@using CryptoWatcher.Blazor.Features.Shared.Exchanges
 @implements IDisposable
 
 <h1>L2 Order Book</h1>
@@ -229,14 +229,14 @@
 
     private readonly Dictionary<string, string> _defaultPairs = new()
     {
-        { "bitmex", "XBTUSD" },
+        //{ "bitmex", "XBTUSD" }, // BitMEX exchange closed in September 2026
         { "bitfinex", "BTCUSD" },
         { "binance", "BTCUSDT" },
         { "bitstamp", "BTCUSD" },
         { "hyperliquid", "BTC" }
     };
 
-    private readonly string[] _availableExchanges = ["binance", "bitfinex", "bitmex", "bitstamp", "hyperliquid"];
+    private readonly string[] _availableExchanges = ["binance", "bitfinex", "bitstamp", "hyperliquid"];
     private string _currentExchange = "binance";
     private string _currentPair = "BTCUSDT";
     private string _selectedExchange = "binance";
@@ -474,7 +474,8 @@
             Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
             foreach (var pair in pairs)
             {
-                client.Send(new L2BookSubscribeRequest(pair));
+                // Fast mode, pushes every ~0.5s but only 5 levels per side
+                client.Send(new HyperliquidFastL2BookSubscribeRequest(pair));
             }
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));
