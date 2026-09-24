@@ -1,0 +1,63 @@
+.exchange {
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.mid {
+    font-weight: 600;
+}
+
+.crossed {
+    color: var(--warn);
+    text-decoration: underline dotted;
+    cursor: help;
+}
+
+.deviation-col {
+    width: 100px;
+}
+
+/* Diverging bar centered on the average mid */
+.deviation {
+    position: relative;
+    width: 80px;
+    height: 6px;
+    margin-left: auto;
+    border-radius: 3px;
+    background: var(--surface-3);
+}
+
+.deviation::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    left: 50%;
+    width: 1px;
+    background: var(--text-3);
+}
+
+.deviation span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.deviation .above {
+    left: 50%;
+    border-radius: 0 3px 3px 0;
+    background: var(--up);
+}
+
+.deviation .below {
+    right: 50%;
+    border-radius: 3px 0 0 3px;
+    background: var(--down);
+}
+
+/* Narrow cards keep only the essential columns */
+@container (max-width: 760px) {
+    .opt {
+        display: none;
+    }
+}

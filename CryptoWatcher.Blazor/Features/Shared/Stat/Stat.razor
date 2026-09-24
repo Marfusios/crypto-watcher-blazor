@@ -1,0 +1,18 @@
+<div class="stat">
+    <div class="label">@Label</div>
+    <div class="value @Tone">@ChildContent</div>
+    @if (Hint is not null)
+    {
+        <div class="hint">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>Optional value color: "up" or "down"</summary>
+    [Parameter] public string? Tone { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

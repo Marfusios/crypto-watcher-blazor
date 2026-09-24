@@ -1,0 +1,38 @@
+<PageTitle>@Title · CryptoWatcher</PageTitle>
+
+<header class="page-head">
+    <div class="titles">
+        <h1>@Title</h1>
+        @if (Subtitle is not null)
+        {
+            <p>@Subtitle</p>
+        }
+    </div>
+
+    @if (string.IsNullOrWhiteSpace(Status))
+    {
+        <span class="status live"><span class="dot"></span>Live</span>
+    }
+    else
+    {
+        <span class="status"><span class="spinner"></span>@Status</span>
+    }
+
+    @if (ChildContent is not null)
+    {
+        <div class="tools">
+            @ChildContent
+        </div>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Connection progress message, empty when data is streaming</summary>
+    [Parameter] public string? Status { get; set; }
+
+    /// <summary>Page controls rendered on the right side</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

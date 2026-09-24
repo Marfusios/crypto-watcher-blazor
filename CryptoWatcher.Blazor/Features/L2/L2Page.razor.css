@@ -1,0 +1,8 @@
+.pair-form {
+    display: flex;
+    gap: 6px;
+}
+
+.stat-balance {
+    margin-top: 6px;
+}

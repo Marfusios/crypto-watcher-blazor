@@ -21,11 +21,15 @@ Exchange feed notes:
 - **Single project solution**: `CryptoWatcher.Blazor` - Blazor WebAssembly app
 - **Features-based organization**: `Features/` directory groups Razor components by feature:
   - `Prices/` - Real-time price comparison across exchanges
-  - `L2/` - L2 order book visualization (Binance)
+  - `L2/` - L2 order book visualization (Binance, Bitfinex, Bitstamp, Hyperliquid)
   - `L3/` - L3 order book visualization (Bitfinex)
-  - `Shared/` - Shared components (Card, Layout, Navigation)
-  - `Stats/` - Statistics features
-- **Styling**: SCSS files co-located with components; `Styles/crypto-watcher.scss` compiles to `wwwroot/crypto-watcher.css` via `compilerconfig.json`
+  - `Liquidity/` - Depth analysis near the mid price across exchanges
+  - `Shared/` - Shared components (Layout, Card, PageHeader, Stat, OrderBook ladder, Icon) and `Format` number helpers
+- **Styling**: plain CSS, no preprocessor
+  - `wwwroot/css/app.css` - design tokens (dark and light theme via `data-theme`), base styles and shared primitives (`.page`, `.stats`, `.grid`, `.seg`, `.btn`, `.chip`, `.balance`)
+  - `*.razor.css` next to components - Blazor CSS isolation, bundled by the SDK into `CryptoWatcher.Blazor.styles.css`; use `::deep` for elements rendered by child components (e.g. `NavLink`)
+  - Theme and sidebar state live on `<html>` attributes, set by the inline script in `wwwroot/index.html` (`window.cw` helpers, persisted in localStorage)
+  - Numbers use `Format` (invariant culture, tabular figures); up/bid = `--up`, down/ask = `--down`
 - **Static assets**: `wwwroot/` directory
 
 ### Key Technical Patterns
@@ -61,7 +65,7 @@ CI/CD: GitHub Actions publishes to GitHub Pages via `.github/workflows/gh-pages.
 ## Code Style
 - **Formatting**: Default C# style, 4 spaces, braces on new lines
 - **Naming**: PascalCase for components/classes, `_camelCase` for private fields, `Async` suffix for async methods
-- **Component structure**: Markup, `@code` block, and SCSS in same directory
+- **Component structure**: Markup, `@code` block, and `.razor.css` in same directory
 - **Commit messages**: Short, descriptive imperative style (e.g., "Fix average price", "Implement L2 order book")
 
 ## Adding Exchange Support

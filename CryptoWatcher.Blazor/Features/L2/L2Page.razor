@@ -26,201 +26,46 @@
 @using CryptoWatcher.Blazor.Features.Shared.Exchanges
 @implements IDisposable
 
-<h1>L2 Order Book</h1>
-
-@if (!string.IsNullOrWhiteSpace(_status))
-{
-    <small>
-        <i class="las la-spinner la-spin"></i>
-        <span>@_status</span>
-    </small>
-}
-
-@if (_bids.Any())
-{
-    <Card>
-        @if (_isEditing)
-        {
-            <div class="l2-controls">
-                <label>
-                    Exchange:
-                    <select @bind="_selectedExchange" @bind:after="OnExchangeChanged">
-                        @foreach (var exchange in _availableExchanges)
-                        {
-                            <option value="@exchange">@exchange</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    Pair:
-                    <input type="text" @bind="_selectedPair" />
-                </label>
-                <button @onclick="ApplyChangesAsync">Apply</button>
-                <button @onclick="CancelEditing">Cancel</button>
-            </div>
-        }
-        else
-        {
-            <h4 @onclick="StartEditing" style="cursor: pointer;">@_currentExchange.ToUpper() @_currentPair</h4>
-        }
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Price</th>
-                    <th>Amount</th>
-                    <th>Total</th>
-                    <th>Distance</th>
-                    <th>Counts</th>
-                    <th>Amount Changed</th>
-                </tr>
-            </thead>
-            <tbody>
-            
-            @{
-                var totalAsks = _asks.Length;
-                var counter = 0;
-
-                foreach (var ask in _asks)
-                {
-                    var index = totalAsks - counter;
-                    var total = _asks[counter..totalAsks].Sum(x => x.Amount);
-                    var dis = (1 - _midPrice / ask.Price) * 100;
-                    
-                    <tr>
-                        <td style="color: #F56666"><strong>@index</strong></td>
-                        <td>@ask.Price?.ToString("0.00")</td>
-                        <td>@ask.Amount?.ToString("0.0000")</td>
-                        <td>@total?.ToString("0.0000")</td>
-                        <td>@dis?.ToString("#.0000")%</td>
-                        <td>
-                            <div style="display: flex; flex-direction: row">
-                                <div>
-                                    @if (ask.Count > 0)
-                                    {
-                                        @ask.Count.ToString()
-                                    }
-                                </div>
-                                <div style="margin-left: 10px">
-                                    @if (ask.CountDifference < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                        @ask.CountDifference.ToString()
-                                    }
-                                    else if (ask.CountDifference > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                        @ask.CountDifference.ToString()
-                                    }
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-direction: row">
-                                <div>
-                                    @if (ask.AmountDifferenceAggregated < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                    }
-                                    else if (ask.AmountDifferenceAggregated > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                    }
-                                    @ask.AmountDifferenceAggregated.ToString("#.####")
-                                </div>
-                                
-                                <div style="flex-grow:1;"></div>
-                                
-                                <div>
-                                    @if (ask.AmountUpdatedCount > 0)
-                                    {
-                                        @ask.AmountUpdatedCount.ToString("#")
-                                        <i class="las la-sync"></i>
-                                    }
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    counter++;
-                }
-
-                counter = 0;
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-                
-                foreach (var bid in _bids)
-                {
-                    counter++;
-                    var total = _bids[..counter].Sum(x => x.Amount);
-                    var dis =   (_midPrice / bid.Price - 1) * 100;
-                    
-                    <tr>
-                        <td style="color: #49BC78"><strong>@counter</strong></td>
-                        <td>@bid.Price?.ToString("0.00")</td>
-                        <td>@bid.Amount?.ToString("0.0000")</td>
-                        <td>@total?.ToString("0.0000")</td>
-                        <td>@dis?.ToString("#.0000")%</td>
-                       <td>
-                            <div style="display: flex; flex-direction: row">
-                                <div>
-                                    @if (bid.Count > 0)
-                                    {
-                                        @bid.Count.ToString()
-                                    }
-                                </div>
-                                <div style="margin-left: 10px">
-                                    @if (bid.CountDifference < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                        @bid.CountDifference.ToString()
-                                    }
-                                    else if (bid.CountDifference > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                        @bid.CountDifference.ToString()
-                                    }
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-direction: row">
-                                <div>
-                                    @if (bid.AmountDifferenceAggregated < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                    }
-                                    else if (bid.AmountDifferenceAggregated > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                    }
-                                    @bid.AmountDifferenceAggregated.ToString("#.####")
-                                </div>
-                                
-                                <div style="flex-grow:1;"></div>
-                                
-                                <div>
-                                    @if (bid.AmountUpdatedCount > 0)
-                                    {
-                                        @bid.AmountUpdatedCount.ToString("#")
-                                        <i class="las la-sync"></i>
-                                    }
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                }
+<div class="page book-page">
+    <PageHeader Title="Order Book L2" Subtitle="Aggregated price levels" Status="@_status">
+        <div class="seg" role="group" aria-label="Exchange">
+            @foreach (var exchange in _availableExchanges)
+            {
+                <button type="button" class="@(exchange == _currentExchange ? "active" : null)" disabled="@_switching"
+                        @onclick="() => SelectExchangeAsync(exchange)">@exchange</button>
             }
-            </tbody>
-        </table>
-    </Card>
-}
+        </div>
+        <form class="pair-form" @onsubmit="ApplyChangesAsync" @onsubmit:preventDefault>
+            <input class="input" @bind="_selectedPair" aria-label="Pair" spellcheck="false" autocomplete="off" />
+            <button class="btn" type="submit" disabled="@_switching">Load</button>
+        </form>
+    </PageHeader>
+
+    @if (_bids.Any() && _asks.Any())
+    {
+        var bestBid = _bids[0];
+        var bestAsk = _asks[^1];
+        var spread = (bestAsk.Price ?? 0) - (bestBid.Price ?? 0);
+        var bidDepth = _bids.Sum(x => x.Amount ?? 0);
+        var askDepth = _asks.Sum(x => x.Amount ?? 0);
+        var bidShare = bidDepth + askDepth > 0 ? bidDepth / (bidDepth + askDepth) * 100 : 50;
+
+        <div class="stats">
+            <Stat Label="Mid price">@Format.Price(_midPrice)</Stat>
+            <Stat Label="Spread" Hint="@($"{Format.Number(Format.Bps(spread, _midPrice), 2)} bps")">@Format.Price(spread)</Stat>
+            <Stat Label="Best bid" Tone="up" Hint="@($"Size {Format.Size(bestBid.Amount)}")">@Format.Price(bestBid.Price)</Stat>
+            <Stat Label="Best ask" Tone="down" Hint="@($"Size {Format.Size(bestAsk.Amount)}")">@Format.Price(bestAsk.Price)</Stat>
+            <Stat Label="Book imbalance" Hint="@($"Bid {Format.Size(bidDepth)} · Ask {Format.Size(askDepth)}")">
+                @Format.Percent(bidShare) bid
+                <span class="balance stat-balance"><span style="width: @Format.Percent(bidShare)"></span></span>
+            </Stat>
+        </div>
+
+        <Card Title="@Format.Name(_currentExchange)" Meta="@($"{_currentPair} · top {_displayedLevels} levels per side")" Flush>
+            <OrderBookLadder Asks="_asks" Bids="_bids" MidPrice="_midPrice" Kind="OrderBookKind.L2" />
+        </Card>
+    }
+</div>
 
 @code {
     private CancellationTokenSource _cancellation = new();
@@ -241,8 +86,8 @@
     private string _currentPair = "BTCUSDT";
     private string _selectedExchange = "binance";
     private string _selectedPair = "BTCUSDT";
-    private bool _isEditing = false;
-    private readonly int _displayedLevels = 10;
+    private bool _switching = true;
+    private readonly int _displayedLevels = 15;
 
     private string _status = string.Empty;
     private double _midPrice;
@@ -258,33 +103,41 @@
         DisplayStatus($"Connecting to {_currentExchange}");
 
         _currentClient = await StartExchange(_currentExchange, [_currentPair], SubscribeToChanges, _cancellation.Token);
+        _switching = false;
 
         DisplayStatus($"Subscribed to {_currentExchange}");
     }
 
-    private void StartEditing()
+    private async Task SelectExchangeAsync(string exchange)
     {
-        _selectedExchange = _currentExchange;
-        _selectedPair = _currentPair;
-        _isEditing = true;
-    }
+        if (_switching || exchange == _currentExchange)
+            return;
 
-    private void CancelEditing()
-    {
-        _isEditing = false;
-    }
-
-    private void OnExchangeChanged()
-    {
-        if (_defaultPairs.TryGetValue(_selectedExchange, out var defaultPair))
-        {
-            _selectedPair = defaultPair;
-        }
+        _selectedExchange = exchange;
+        _selectedPair = _defaultPairs.GetValueOrDefault(exchange, _selectedPair);
+        await ApplyChangesAsync();
     }
 
     private async Task ApplyChangesAsync()
     {
-        _isEditing = false;
+        // Ignore clicks while a connection is being established
+        if (_switching)
+            return;
+
+        _switching = true;
+        try
+        {
+            await SwitchMarketAsync();
+        }
+        finally
+        {
+            _switching = false;
+        }
+    }
+
+    private async Task SwitchMarketAsync()
+    {
+        _selectedPair = _selectedPair.Trim().ToUpperInvariant();
 
         // Disconnect current connection
         foreach (var stream in _streams)

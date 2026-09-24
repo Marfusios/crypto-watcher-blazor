@@ -2,8 +2,8 @@
 
 ## Project Structure & Module Organization
 - `CryptoWatcher.Blazor/` hosts the Blazor WebAssembly app; `Program.cs` wires root components and DI.
-- `Features/` groups Razor pages by feature (`L2`, `L3`, `Prices`, `Shared`); each `.razor` may have a co-located `.razor.scss`.
-- `Styles/crypto-watcher.scss` compiles (via `compilerconfig.json`) into `wwwroot/crypto-watcher.css`; keep static assets under `wwwroot/`.
+- `Features/` groups Razor pages by feature (`Prices`, `L2`, `L3`, `Liquidity`, `Shared`); each `.razor` may have a co-located `.razor.css` (Blazor CSS isolation).
+- `wwwroot/css/app.css` holds the design tokens (dark/light theme) and shared primitives; keep static assets under `wwwroot/`.
 - `.github/workflows/` defines CI builds/tests and the GitHub Pages deploy pipeline.
 
 ## Build, Test, and Development Commands

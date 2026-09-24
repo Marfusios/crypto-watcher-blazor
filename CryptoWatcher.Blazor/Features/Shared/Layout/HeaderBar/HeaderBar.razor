@@ -1,13 +1,31 @@
-﻿<div class="header-bar">
-    <a class="logo" href="/">
-        <p class="logo-text">
-            Crypto<span>Watcher</span>
-        </p>
+@inject IJSRuntime JS
+
+<header class="topbar">
+    <button class="icon-btn" type="button" title="Toggle menu" aria-label="Toggle menu" @onclick="ToggleSidebar">
+        <Icon Name="sidebar" />
+    </button>
+
+    <a class="brand" href="/">
+        <span class="mark"><Icon Name="logo" Size="18" /></span>
+        <span>Crypto<b>Watcher</b></span>
     </a>
 
-    <div>
-        <a href="https://github.com/marfusios/crypto-watcher-blazor"
-           aria-label="Star marfusios/crypto-watcher-blazor on GitHub">Github Repository</a>
-    </div>
+    <span class="spacer"></span>
 
-</div>
+    <button class="icon-btn" type="button" title="Toggle light / dark theme" aria-label="Toggle theme" @onclick="ToggleTheme">
+        <span class="when-dark"><Icon Name="sun" /></span>
+        <span class="when-light"><Icon Name="moon" /></span>
+    </button>
+
+    <a class="icon-btn link" href="https://github.com/marfusios/crypto-watcher-blazor" target="_blank" rel="noopener"
+       title="Source code on GitHub">
+        <span class="link-text">GitHub</span>
+        <Icon Name="external" Size="14" />
+    </a>
+</header>
+
+@code {
+    private async Task ToggleSidebar() => await JS.InvokeVoidAsync("cw.toggleSidebar");
+
+    private async Task ToggleTheme() => await JS.InvokeVoidAsync("cw.toggleTheme");
+}

@@ -1,0 +1,36 @@
+.range,
+.exchange {
+    font-weight: 500;
+}
+
+.exchange {
+    text-transform: capitalize;
+}
+
+.balance-col {
+    width: 130px;
+    min-width: 110px;
+}
+
+.stat-balance {
+    margin-top: 6px;
+}
+
+th.group {
+    height: 26px;
+    border-bottom: 0;
+    color: var(--text-2);
+    text-align: center;
+}
+
+.group,
+.group-start {
+    border-left: 1px solid var(--line);
+}
+
+/* Narrow cards keep only the essential columns */
+@container (max-width: 820px) {
+    .opt {
+        display: none;
+    }
+}

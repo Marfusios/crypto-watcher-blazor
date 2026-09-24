@@ -1,0 +1,144 @@
+.book {
+    padding: 4px 0 6px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.book.l2 {
+    --cols: minmax(92px, 1.3fr) minmax(72px, 1fr) minmax(72px, 1fr) minmax(62px, .8fr) minmax(56px, .7fr) minmax(70px, .8fr) minmax(76px, 1fr) minmax(60px, .7fr);
+}
+
+.book.l3 {
+    --cols: minmax(92px, 1.3fr) minmax(72px, 1fr) minmax(72px, 1fr) minmax(62px, .8fr) minmax(76px, 1fr) minmax(60px, .7fr) minmax(64px, .7fr);
+}
+
+.book.l2.no-counts {
+    --cols: minmax(92px, 1.3fr) minmax(72px, 1fr) minmax(72px, 1fr) minmax(62px, .8fr) minmax(76px, 1fr) minmax(60px, .7fr);
+}
+
+.row {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--cols);
+    align-items: center;
+    height: 22px;
+}
+
+.row > span {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    padding: 0 8px;
+    text-align: right;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.row > span:first-child {
+    padding-left: 12px;
+    text-align: left;
+}
+
+.row > span:last-child {
+    padding-right: 12px;
+}
+
+.row.head {
+    height: 28px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Two right anchored bars: faint cumulative depth and a stronger bar for the level size */
+.row.ask::before,
+.row.bid::before,
+.row.ask::after,
+.row.bid::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    right: 0;
+    bottom: 1px;
+}
+
+.row.ask::before,
+.row.bid::before {
+    width: var(--depth);
+    opacity: .45;
+}
+
+.row.ask::after,
+.row.bid::after {
+    width: var(--size);
+}
+
+.row.ask::before,
+.row.ask::after {
+    background: var(--down-soft);
+}
+
+.row.bid::before,
+.row.bid::after {
+    background: var(--up-soft);
+}
+
+.row.ask:hover,
+.row.bid:hover {
+    background: var(--surface-2);
+}
+
+.ask .price {
+    color: var(--down);
+}
+
+.bid .price {
+    color: var(--up);
+}
+
+.row.spread {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    height: 34px;
+    margin: 3px 0;
+    padding: 0 12px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.row.spread > span {
+    padding: 0;
+}
+
+.mid {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.spread-info {
+    display: flex;
+    gap: 8px;
+    color: var(--text-2);
+}
+
+/* Narrow cards keep only the essential columns */
+@container (max-width: 640px) {
+    .opt {
+        display: none;
+    }
+
+    .book.l2 {
+        --cols: minmax(88px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr) minmax(60px, .7fr) minmax(70px, 1fr);
+    }
+
+    .book.l2.no-counts {
+        --cols: minmax(88px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr) minmax(70px, 1fr);
+    }
+
+    .book.l3 {
+        --cols: minmax(88px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr) minmax(70px, 1fr);
+    }
+}

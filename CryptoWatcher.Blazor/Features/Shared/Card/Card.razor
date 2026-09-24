@@ -1,7 +1,30 @@
-﻿<div class="card">
-    @ChildContent
-</div>
+<section class="card">
+    @if (Title is not null || Toolbar is not null)
+    {
+        <header class="card-head">
+            @if (Title is not null)
+            {
+                <h2>@Title</h2>
+            }
+            @if (Meta is not null)
+            {
+                <span class="card-meta">@Meta</span>
+            }
+            <span class="card-spacer"></span>
+            @Toolbar
+        </header>
+    }
+    <div class="card-body @(Flush ? "flush" : null)">
+        @ChildContent
+    </div>
+</section>
 
 @code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Meta { get; set; }
+    [Parameter] public RenderFragment? Toolbar { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Removes body padding, used for tables that span the whole card</summary>
+    [Parameter] public bool Flush { get; set; }
 }

@@ -3,10 +3,45 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c0f13" />
     <title>CryptoWatcher</title>
     <base href="/" />
-    <link rel="stylesheet" href="/crypto-watcher.min.css" />
+    <script>
+        // Apply theme and sidebar state before the first paint, Blazor toggles them via window.cw
+        (function () {
+            var root = document.documentElement;
+            var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+            var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) { } };
+            var isMobile = function () { return window.innerWidth < 640; };
+            var setTheme = function (theme) {
+                root.dataset.theme = theme;
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'light' ? '#ffffff' : '#0c0f13';
+            };
+
+            setTheme(read('cw-theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+            root.dataset.sidebar = isMobile() ? 'collapsed' : (read('cw-sidebar') || (window.innerWidth < 1024 ? 'collapsed' : 'expanded'));
+
+            window.cw = {
+                toggleTheme: function () {
+                    var theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+                    setTheme(theme);
+                    write('cw-theme', theme);
+                },
+                toggleSidebar: function () {
+                    var state = root.dataset.sidebar === 'collapsed' ? 'expanded' : 'collapsed';
+                    root.dataset.sidebar = state;
+                    if (!isMobile()) write('cw-sidebar', state);
+                },
+                closeSidebarOnMobile: function () {
+                    if (isMobile()) root.dataset.sidebar = 'collapsed';
+                }
+            };
+        })();
+    </script>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="CryptoWatcher.Blazor.styles.css" />
     <link href="manifest.json" rel="manifest" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
@@ -14,7 +49,9 @@
 </head>
 
 <body>
-    <div id="app">Loading...</div>
+    <div id="app">
+        <div class="app-loading"><span class="spinner"></span>Loading CryptoWatcher</div>
+    </div>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.

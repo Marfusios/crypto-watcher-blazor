@@ -1,0 +1,105 @@
+@using Crypto.Websocket.Extensions.Core.OrderBooks.Models
+
+<div class="book @(Kind == OrderBookKind.L3 ? "l3" : "l2") @(_showCounts ? null : "no-counts")" role="table" aria-label="Order book">
+    <div class="row head" role="row">
+        <span role="columnheader">Price</span>
+        <span role="columnheader">Size</span>
+        <span role="columnheader" title="Cumulative size from the best price">Total</span>
+        <span class="opt" role="columnheader" title="Distance from the mid price">Dist</span>
+        @if (_showCounts)
+        {
+            <span role="columnheader" title="Number of orders at the level">Orders</span>
+            <span class="opt" role="columnheader" title="Change of the order count">Δ Orders</span>
+        }
+        <span role="columnheader" title="Aggregated size change">Δ Size</span>
+        @if (Kind == OrderBookKind.L3)
+        {
+            <span class="opt" role="columnheader" title="Number of price updates">Px upd</span>
+        }
+        <span class="opt" role="columnheader" title="Number of size updates">Updates</span>
+    </div>
+
+    @for (var i = 0; i < Asks.Length; i++)
+    {
+        @RenderRow(Asks[i], _askTotals[i], "ask")
+    }
+
+    <div class="row spread" role="row">
+        <span class="mid" role="cell">@Format.Price(MidPrice)</span>
+        <span class="spread-info" role="cell">
+            Spread @Format.Price(_spread)
+            <span class="muted">@Format.Number(Format.Bps(_spread, MidPrice), 2) bps</span>
+        </span>
+    </div>
+
+    @for (var i = 0; i < Bids.Length; i++)
+    {
+        @RenderRow(Bids[i], _bidTotals[i], "bid")
+    }
+</div>
+
+@code {
+    /// <summary>Ask levels sorted by price descending, the best ask is the last one</summary>
+    [Parameter, EditorRequired] public OrderBookLevel[] Asks { get; set; } = [];
+
+    /// <summary>Bid levels sorted by price descending, the best bid is the first one</summary>
+    [Parameter, EditorRequired] public OrderBookLevel[] Bids { get; set; } = [];
+
+    [Parameter] public double MidPrice { get; set; }
+    [Parameter] public OrderBookKind Kind { get; set; } = OrderBookKind.L2;
+
+    private double[] _askTotals = [];
+    private double[] _bidTotals = [];
+    private double _maxTotal;
+    private double _maxSize;
+    private double _spread;
+    private bool _showCounts;
+
+    protected override void OnParametersSet()
+    {
+        // Cumulative size grows away from the spread on both sides
+        _askTotals = new double[Asks.Length];
+        var total = 0d;
+        for (var i = Asks.Length - 1; i >= 0; i--)
+            _askTotals[i] = total += Asks[i].Amount ?? 0;
+
+        _bidTotals = new double[Bids.Length];
+        total = 0;
+        for (var i = 0; i < Bids.Length; i++)
+            _bidTotals[i] = total += Bids[i].Amount ?? 0;
+
+        _maxTotal = Math.Max(_askTotals.FirstOrDefault(), _bidTotals.LastOrDefault());
+        _maxSize = Asks.Concat(Bids).Select(x => x.Amount ?? 0).DefaultIfEmpty().Max();
+        // Some L2 feeds (Binance, Bitstamp) don't provide order counts
+        _showCounts = Kind == OrderBookKind.L2 && Asks.Concat(Bids).Any(x => x.Count > 0);
+        _spread = Asks.Length > 0 && Bids.Length > 0 ? (Asks[^1].Price ?? 0) - (Bids[0].Price ?? 0) : 0;
+    }
+
+    private RenderFragment RenderRow(OrderBookLevel level, double total, string side) =>
+        @<div class="row @side" style="--depth: @Percent(total, _maxTotal); --size: @Percent(level.Amount ?? 0, _maxSize)" role="row">
+            <span class="price" role="cell">@Format.Price(level.Price)</span>
+            <span role="cell">@Format.Size(level.Amount)</span>
+            <span class="dim" role="cell">@Format.Size(total)</span>
+            <span class="opt muted" role="cell">@Distance(level.Price)</span>
+            @if (_showCounts)
+            {
+                <span role="cell">@(level.Count > 0 ? level.Count : null)</span>
+                <span class="opt @Format.Tone(level.CountDifference)" role="cell">@NonZero(level.CountDifference, 0)</span>
+            }
+            <span class="@Format.Tone(level.AmountDifferenceAggregated)" role="cell">@NonZero(level.AmountDifferenceAggregated, 4)</span>
+            @if (Kind == OrderBookKind.L3)
+            {
+                <span class="opt muted" role="cell">@(level.PriceUpdatedCount > 0 ? level.PriceUpdatedCount : null)</span>
+            }
+            <span class="opt muted" role="cell">@(level.AmountUpdatedCount > 0 ? level.AmountUpdatedCount : null)</span>
+        </div>;
+
+    private static string Percent(double value, double max) =>
+        (max > 0 ? value / max * 100 : 0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private string Distance(double? price) =>
+        price > 0 && MidPrice > 0 ? Format.Number(Math.Abs(price.Value / MidPrice - 1) * 100, 3) + "%" : string.Empty;
+
+    private static string? NonZero(double value, int decimals) =>
+        Math.Round(value, decimals) != 0 ? Format.Signed(value, decimals) : null;
+}

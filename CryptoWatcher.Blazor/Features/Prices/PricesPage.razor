@@ -31,52 +31,87 @@
 @using CryptoWatcher.Blazor.Features.Shared.Exchanges
 @implements IDisposable
 
-<h1>Crypto Prices</h1>
+<div class="page">
+    <PageHeader Title="Prices" Subtitle="@($"BTC top of book across {_targetMarkets.Count} exchanges")" Status="@_status" />
 
-@if (!string.IsNullOrWhiteSpace(_status))
-{
-    <small>
-        <i class="las la-spinner la-spin"></i>
-        <span>@_status</span>
-    </small>
-}
+    @if (_rows.Length > 0)
+    {
+        // A crossed local book (bid >= ask) is a sync glitch, don't let it fake an arbitrage
+        var validRows = _rows.Where(x => !x.IsCrossed).ToArray();
+        var widest = _rows.MaxBy(x => Math.Abs(x.Deviation))!;
 
-@if (_changes.Any())
-{
-    <Card>
-        <table>
-            <thead>
-                <tr>
-                    <th>Exchange</th>
-                    <th>Symbol</th>
-                    <th>Current Price</th>
-                    <th>Diff from Avg (<span class="average">@_averagePrice.ToString("###,###,###.00")</span>)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var info in _changes)
-                {
+        <div class="stats">
+            <Stat Label="Average mid" Hint="Mean of all mid prices">@Format.Price(_averagePrice)</Stat>
+            @if (validRows.Length > 0)
+            {
+                var bestBid = validRows.MaxBy(x => x.Bid)!;
+                var bestAsk = validRows.MinBy(x => x.Ask)!;
+                var crossSpread = bestAsk.Ask - bestBid.Bid;
+
+                <Stat Label="Best bid" Hint="@bestBid.Exchange" Tone="up">@Format.Price(bestBid.Bid)</Stat>
+                <Stat Label="Best ask" Hint="@bestAsk.Exchange" Tone="down">@Format.Price(bestAsk.Ask)</Stat>
+                <Stat Label="Cross-exchange spread" Tone="@(crossSpread < 0 ? "up" : null)"
+                      Hint="@($"{(crossSpread < 0 ? "Crossed" : "Best ask − best bid")} · {Format.Number(Format.Bps(crossSpread, _averagePrice), 1)} bps")">
+                    @Format.Signed(crossSpread)
+                </Stat>
+            }
+            <Stat Label="Widest deviation" Hint="@widest.Exchange" Tone="@Format.Tone(widest.Deviation)">
+                @Format.Signed(widest.Deviation)
+            </Stat>
+        </div>
+
+        <Card Title="Top of book" Meta="Deviation from the average mid" Flush>
+            <table class="grid">
+                <thead>
                     <tr>
-                        <td class="exchange">@info.Exchange</td>
-                        <td>@info.Pair</td>
-                        <td>@info.Price.ToString("###,###,###.00")</td>
-                        <td>
-                            @if (info.PriceDiff < 0)
+                        <th>Exchange</th>
+                        <th class="opt">Pair</th>
+                        <th class="num opt">Bid size</th>
+                        <th class="num">Bid</th>
+                        <th class="num">Ask</th>
+                        <th class="num opt">Ask size</th>
+                        <th class="num">Spread</th>
+                        <th class="num">Mid</th>
+                        <th class="num">vs Avg</th>
+                        <th class="num opt">bps</th>
+                        <th class="deviation-col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td class="exchange">@row.Exchange</td>
+                            <td class="dim opt">@row.Pair</td>
+                            <td class="num dim opt">@Format.Size(row.BidSize)</td>
+                            <td class="num up">@Format.Price(row.Bid)</td>
+                            <td class="num down">@Format.Price(row.Ask)</td>
+                            <td class="num dim opt">@Format.Size(row.AskSize)</td>
+                            @if (row.IsCrossed)
                             {
-                                <i class="las la-arrow-down"></i>
+                                <td class="num crossed" title="Local order book is crossed (bid ≥ ask), excluded from the best bid / ask">
+                                    @Format.Price(row.Ask - row.Bid)
+                                </td>
                             }
                             else
                             {
-                                <i class="las la-arrow-up"></i>
+                                <td class="num dim">@Format.Price(row.Ask - row.Bid)</td>
                             }
-                            @info.PriceDiff.ToString("###,###,###.00")
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </Card>
-}
+                            <td class="num mid @(row.Tick > 0 ? "up" : row.Tick < 0 ? "down" : null)">@Format.Price(row.Mid)</td>
+                            <td class="num @Format.Tone(row.Deviation)">@Format.Signed(row.Deviation)</td>
+                            <td class="num opt @Format.Tone(row.Deviation)">@Format.Signed(Format.Bps(row.Deviation, _averagePrice), 1)</td>
+                            <td class="deviation-col">
+                                <div class="deviation">
+                                    <span class="@(row.Deviation >= 0 ? "above" : "below")" style="width: @DeviationWidth(row.Deviation)"></span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </Card>
+    }
+</div>
 
 
 @code {
@@ -93,9 +128,11 @@
             { "hyperliquid", "BTC" }
         };
 
+    private readonly Dictionary<string, (double Mid, int Tick)> _lastMids = new();
+
     private string _status = string.Empty;
     private double _averagePrice;
-    private PriceChange[] _changes = Array.Empty<PriceChange>();
+    private PriceRow[] _rows = Array.Empty<PriceRow>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,14 +161,9 @@
         {
             _averagePrice = changes.Average(x => x.Quotes.Mid);
 
-            _changes = changes
+            _rows = changes
                 .OrderBy(x => x.ExchangeName)
-                .Select(x => new PriceChange(
-                    x.ExchangeName ?? string.Empty,
-                    x.PairOriginal,
-                    x.Quotes.Mid,
-                    x.Quotes.Mid - _averagePrice
-                    ))
+                .Select(ToRow)
                 .ToArray();
             DisplayStatus(string.Empty);
         });
@@ -146,6 +178,28 @@
         }
         
         DisplayStatus("Waiting for price change...");
+    }
+
+    private PriceRow ToRow(IOrderBookChangeInfo change)
+    {
+        var exchange = change.ExchangeName ?? string.Empty;
+        var quotes = change.Quotes;
+
+        // Remember the direction of the last mid price move to color the price
+        var tick = 0;
+        if (_lastMids.TryGetValue(exchange, out var last))
+            tick = quotes.Mid > last.Mid ? 1 : quotes.Mid < last.Mid ? -1 : last.Tick;
+        _lastMids[exchange] = (quotes.Mid, tick);
+
+        return new PriceRow(exchange, change.PairOriginal, quotes.Bid, quotes.Ask, quotes.BidAmount, quotes.AskAmount,
+            quotes.Mid, quotes.Mid - _averagePrice, tick);
+    }
+
+    private string DeviationWidth(double deviation)
+    {
+        var max = _rows.Max(x => Math.Abs(x.Deviation));
+        var width = max > 0 ? Math.Abs(deviation) / max * 50 : 0;
+        return width.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
 
     private void DisplayStatus(string status)
@@ -340,5 +394,9 @@
         //_cancellation.Dispose();
     }
 
-    private record PriceChange(string Exchange, string Pair, double Price, double PriceDiff);
+    private record PriceRow(string Exchange, string Pair, double Bid, double Ask, double BidSize, double AskSize,
+        double Mid, double Deviation, int Tick)
+    {
+        public bool IsCrossed => Bid >= Ask;
+    }
 }

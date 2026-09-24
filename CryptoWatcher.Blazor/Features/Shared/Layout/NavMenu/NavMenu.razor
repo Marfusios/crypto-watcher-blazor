@@ -1,20 +1,15 @@
-﻿<aside class="navmenu">
-    <div class="menu-container">
-        <nav class="menu">
-            <ul>
-                <li class="menu-item">
-                    <NavLink href="/" Match="NavLinkMatch.All"><i class="lab la-bitcoin" title="Prices"></i> <span>Prices</span></NavLink>
-                </li>
-                <li class="menu-item">
-                    <NavLink href="/l3" Match="NavLinkMatch.All"><i class="las la-coins" title="Order Book - L3"></i> <span>Order Book (L3)</span></NavLink>
-                </li>
-                <li class="menu-item">
-                    <NavLink href="/l2" Match="NavLinkMatch.All"><i class="las la-book" title="Order Book - L2"></i> <span>Order Book (L2)</span></NavLink>
-                </li>
-                <li class="menu-item">
-                    <NavLink href="/liquidity" Match="NavLinkMatch.All"><i class="las la-chart-area" title="Liquidity Analysis"></i> <span>Liquidity Analysis</span></NavLink>
-                </li>
-            </ul>
-        </nav>
-    </div>
-</aside>
+<nav class="menu">
+    <span class="section">Markets</span>
+    <NavLink href="/" Match="NavLinkMatch.All" title="Prices">
+        <Icon Name="prices" /><span class="label">Prices</span>
+    </NavLink>
+    <NavLink href="/l2" Match="NavLinkMatch.All" title="Order Book L2">
+        <Icon Name="l2" /><span class="label">Order Book L2</span>
+    </NavLink>
+    <NavLink href="/l3" Match="NavLinkMatch.All" title="Order Book L3">
+        <Icon Name="l3" /><span class="label">Order Book L3</span>
+    </NavLink>
+    <NavLink href="/liquidity" Match="NavLinkMatch.All" title="Liquidity">
+        <Icon Name="liquidity" /><span class="label">Liquidity</span>
+    </NavLink>
+</nav>

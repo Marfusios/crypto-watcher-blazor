@@ -1,0 +1,348 @@
+/*
+   CryptoWatcher design system: tokens, base and shared primitives.
+   Component specific styles live next to components in *.razor.css (Blazor CSS isolation).
+*/
+
+/* ---------- Tokens ---------- */
+
+:root {
+    color-scheme: dark;
+    --bg: #0c0f13;
+    --surface: #12161c;
+    --surface-2: #171c23;
+    --surface-3: #1f252e;
+    --border: #232a34;
+    --line: #1a2028;
+    --text: #e6e9ed;
+    --text-2: #a3acb9;
+    --text-3: #6c7787;
+    --accent: #4f8cff;
+    --accent-soft: rgba(79, 140, 255, .14);
+    --up: #1dc58a;
+    --down: #f6465d;
+    --up-soft: rgba(29, 197, 138, .12);
+    --down-soft: rgba(246, 70, 93, .12);
+    --warn: #f0b90b;
+    --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --radius: 6px;
+    --radius-lg: 8px;
+    --topbar-h: 44px;
+    --sidebar-w: 196px;
+    --sidebar-rail: 52px;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-2: #f7f8fa;
+    --surface-3: #eceff3;
+    --border: #e1e5ea;
+    --line: #eef0f3;
+    --text: #111827;
+    --text-2: #4b5563;
+    --text-3: #8a93a1;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, .1);
+    --up: #059669;
+    --down: #dc2f4b;
+    --up-soft: rgba(5, 150, 105, .1);
+    --down-soft: rgba(220, 47, 75, .08);
+    --warn: #b7791f;
+    --shadow: 0 8px 24px rgba(17, 24, 39, .12);
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+}
+
+h1, h2, h3, p {
+    margin: 0;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+button, input, select {
+    font: inherit;
+    color: inherit;
+}
+
+::selection {
+    background: var(--accent-soft);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* ---------- Page scaffolding ---------- */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 1320px;
+    padding: 16px 20px 28px;
+}
+
+/* Order book ladders read best when the columns stay close together */
+.page.book-page {
+    max-width: 1080px;
+}
+
+.stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    overflow: hidden;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+}
+
+.stats > * {
+    flex: 1 1 150px;
+}
+
+/* ---------- Numbers and semantics ---------- */
+
+.num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+.dim { color: var(--text-2); }
+.muted { color: var(--text-3); }
+
+/* ---------- Data grid ---------- */
+
+.grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.grid th {
+    height: 30px;
+    padding: 0 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.grid td {
+    height: 30px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+.grid th.num, .grid td.num {
+    text-align: right;
+}
+
+.grid tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.grid tbody tr:hover td {
+    background: var(--surface-2);
+}
+
+/* ---------- Controls ---------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: var(--surface-3);
+}
+
+.btn:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.seg button {
+    height: 24px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+    cursor: pointer;
+}
+
+.seg button:hover:not(:disabled) {
+    color: var(--text);
+}
+
+.seg button.active {
+    background: var(--surface-3);
+    color: var(--text);
+}
+
+.seg button:disabled {
+    cursor: default;
+}
+
+.input {
+    height: 28px;
+    width: 120px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 4px;
+    background: var(--surface-3);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+/* ---------- Indicators ---------- */
+
+.spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Bid vs ask share, bid grows from the left */
+.balance {
+    display: flex;
+    height: 6px;
+    min-width: 72px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--down);
+}
+
+.balance > span {
+    background: var(--up);
+}
+
+/* ---------- App shell states ---------- */
+
+.app-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 100vh;
+    color: var(--text-3);
+}
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    padding: 10px 44px 10px 16px;
+    background: var(--down);
+    color: #fff;
+}
+
+#blazor-error-ui .reload {
+    margin-left: 12px;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+#blazor-error-ui .dismiss {
+    position: absolute;
+    top: 9px;
+    right: 16px;
+    cursor: pointer;
+}
+
+@media (max-width: 640px) {
+    .page {
+        padding: 12px 12px 24px;
+    }
+
+    .stats > * {
+        flex-basis: 40%;
+    }
+}

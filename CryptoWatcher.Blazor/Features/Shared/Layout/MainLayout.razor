@@ -1,13 +1,41 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<HeaderBar />
+<div class="shell">
+    <HeaderBar />
 
-<div class="main">
-    <div class="sidebar">
+    <aside class="sidebar">
         <NavMenu />
-    </div>
+    </aside>
 
-    <div class="content">
+    <div class="backdrop" @onclick="CloseSidebarOnMobile"></div>
+
+    <main class="content">
         @Body
-    </div>
+    </main>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // The expanded sidebar overlays the page on phones, hide it after navigation
+        await CloseSidebarOnMobile();
+    }
+
+    private async Task CloseSidebarOnMobile()
+    {
+        await JS.InvokeVoidAsync("cw.closeSidebarOnMobile");
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

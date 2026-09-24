@@ -1,0 +1,40 @@
+.card {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+}
+
+.card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-head h2 {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.card-meta {
+    color: var(--text-3);
+    font-size: 12px;
+}
+
+.card-spacer {
+    flex: 1;
+}
+
+.card-body {
+    container-type: inline-size;
+    padding: 12px;
+}
+
+.card-body.flush {
+    padding: 0;
+    overflow-x: auto;
+}

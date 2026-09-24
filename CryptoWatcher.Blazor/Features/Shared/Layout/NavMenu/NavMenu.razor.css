@@ -1,0 +1,69 @@
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 8px;
+}
+
+.section {
+    padding: 4px 10px 6px;
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.menu ::deep a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--radius);
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.menu ::deep a:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.menu ::deep a.active {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
+.menu ::deep a.active svg {
+    color: var(--accent);
+}
+
+.menu ::deep svg {
+    flex: none;
+}
+
+/* Icon rail */
+:root[data-sidebar="collapsed"] .label,
+:root[data-sidebar="collapsed"] .section {
+    display: none;
+}
+
+:root[data-sidebar="collapsed"] .menu ::deep a {
+    justify-content: center;
+    padding: 0;
+}
+
+/* Phones always show labels, the sidebar is an overlay there */
+@media (max-width: 640px) {
+    :root[data-sidebar] .label,
+    :root[data-sidebar] .section {
+        display: initial;
+    }
+
+    :root[data-sidebar] .menu ::deep a {
+        justify-content: flex-start;
+        padding: 0 10px;
+    }
+}

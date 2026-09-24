@@ -24,171 +24,119 @@
 @using System
 @implements IDisposable
 
-<h1>Advanced Liquidity Analysis</h1>
-
-@if (!string.IsNullOrWhiteSpace(_status))
-{
-    <small>
-        <i class="las la-spinner la-spin"></i>
-        <span>@_status</span>
-    </small>
-}
-
-@if (_liquidityMetrics.Any())
-{
-    <div class="liquidity-cards">
-        <Card>
-            <h4>Market Overview</h4>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">Active Exchanges</span>
-                    <span class="stat-value">@_activeExchanges</span>
-                    <div class="exchange-tags-overview">
-                        @foreach (var exchange in _activeExchangeNames)
-                        {
-                            <span class="exchange-tag">@exchange</span>
-                        }
-                    </div>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Mid Price</span>
-                    <span class="stat-value">@_averageMidPrice.ToString("###,###,###.00")</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Bid Liquidity</span>
-                    <span class="stat-value positive">@_totalBidLiquidity.ToString("###,###.00") BTC</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Ask Liquidity</span>
-                    <span class="stat-value negative">@_totalAskLiquidity.ToString("###,###.00") BTC</span>
-                </div>
-            </div>
-        </Card>
-    </div>
-
-    @foreach (var rangePercent in _priceRanges)
-    {
-        var metrics = _liquidityMetrics.Where(m => m.RangePercent == rangePercent).OrderBy(m => m.Side).ToArray();
-        if (metrics.Any())
+<div class="page">
+    <PageHeader Title="Liquidity" Subtitle="@($"Depth near the mid price across {_targetMarkets.Count} exchanges")" Status="@_status">
+        @foreach (var exchange in _activeExchangeNames)
         {
-            <Card>
-                <h4>@rangePercent% from Mid Price</h4>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Side</th>
-                            <th>Total Liquidity (BTC)</th>
-                            <th>Total Liquidity (USD)</th>
-                            <th>Avg Amount Changed</th>
-                            <th>Total Count Changed</th>
-                            <th>Price Range</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var metric in metrics)
-                        {
-                            <tr>
-                                <td class="@(metric.Side == "Bid" ? "bid-side" : "ask-side")">
-                                    <strong>@metric.Side</strong>
-                                </td>
-                                <td>@metric.TotalLiquidityBtc.ToString("###,###.0000")</td>
-                                <td>@metric.TotalLiquidityUsd.ToString("$###,###,###")</td>
-                                <td>
-                                    @if (metric.AvgAmountChanged < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                    }
-                                    else if (metric.AvgAmountChanged > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                    }
-                                    @metric.AvgAmountChanged.ToString("#.####")
-                                </td>
-                                <td>
-                                    @if (metric.TotalCountChanged < 0)
-                                    {
-                                        <i class="las la-arrow-down"></i>
-                                    }
-                                    else if (metric.TotalCountChanged > 0)
-                                    {
-                                        <i class="las la-arrow-up"></i>
-                                    }
-                                    @metric.TotalCountChanged
-                                </td>
-                                <td>
-                                    <div class="price-range-display">
-                                        @foreach (var range in metric.PriceRanges)
-                                        {
-                                            <div class="price-range-item">@range</div>
-                                        }
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </Card>
+            <span class="chip">@exchange</span>
         }
-    }
+    </PageHeader>
 
-    <Card>
-        <h4>Detailed Exchange Breakdown</h4>
-        <table>
-            <thead>
-                <tr>
-                    <th>Side</th>
-                    <th>Range</th>
-                    <th>Exchange</th>
-                    <th>Liquidity (BTC)</th>
-                    <th>Amount Changed</th>
-                    <th>Count Changed</th>
-                    <th>Levels</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var asks = _exchangeDetails.Where(d => d.Side == "Ask").OrderByDescending(d => d.RangePercent).ThenBy(d => d.Exchange);
-                    var bids = _exchangeDetails.Where(d => d.Side == "Bid").OrderBy(d => d.RangePercent).ThenBy(d => d.Exchange);
-                    var orderedDetails = asks.Concat(bids);
-                }
-                @foreach (var detail in orderedDetails)
-                {
+    @if (_liquidityMetrics.Any())
+    {
+        var widestRange = _priceRanges.Max();
+
+        <div class="stats">
+            <Stat Label="Mid price" Hint="@($"Average of {_activeExchanges} exchanges")">@Format.Price(_averageMidPrice)</Stat>
+            <Stat Label="Bid depth" Tone="up" Hint="@($"{Format.Usd(_totalBidLiquidity * _averageMidPrice)} · top 50 levels")">@Format.Number(_totalBidLiquidity, 2) BTC</Stat>
+            <Stat Label="Ask depth" Tone="down" Hint="@($"{Format.Usd(_totalAskLiquidity * _averageMidPrice)} · top 50 levels")">@Format.Number(_totalAskLiquidity, 2) BTC</Stat>
+            <Stat Label="Depth imbalance" Hint="Bid share of the top 50 levels">
+                @Share(_totalBidLiquidity, _totalAskLiquidity) bid
+                <span class="balance stat-balance"><span style="width: @Share(_totalBidLiquidity, _totalAskLiquidity)"></span></span>
+            </Stat>
+        </div>
+
+        <Card Title="Depth by range" Meta="All exchanges, liquidity within the range around each mid price" Flush>
+            <table class="grid">
+                <thead>
                     <tr>
-                        <td class="@(detail.Side == "Bid" ? "bid-side" : "ask-side")">
-                            <strong>@detail.Side</strong>
-                        </td>
-                        <td>@detail.RangePercent%</td>
-                        <td class="exchange">@detail.Exchange</td>
-                        <td>@detail.LiquidityBtc.ToString("###,###.0000")</td>
-                        <td>
-                            @if (detail.AmountChanged < 0)
-                            {
-                                <i class="las la-arrow-down"></i>
-                            }
-                            else if (detail.AmountChanged > 0)
-                            {
-                                <i class="las la-arrow-up"></i>
-                            }
-                            @detail.AmountChanged.ToString("#.####")
-                        </td>
-                        <td>
-                            @if (detail.CountChanged < 0)
-                            {
-                                <i class="las la-arrow-down"></i>
-                            }
-                            else if (detail.CountChanged > 0)
-                            {
-                                <i class="las la-arrow-up"></i>
-                            }
-                            @detail.CountChanged
-                        </td>
-                        <td>@detail.LevelCount</td>
+                        <th>Range</th>
+                        <th class="num opt" title="Order count change">Δ Orders</th>
+                        <th class="num opt" title="Average size change">Δ Size</th>
+                        <th class="num opt">Bid USD</th>
+                        <th class="num">Bid BTC</th>
+                        <th class="balance-col">Bid / Ask</th>
+                        <th class="num">Ask BTC</th>
+                        <th class="num opt">Ask USD</th>
+                        <th class="num opt" title="Average size change">Δ Size</th>
+                        <th class="num opt" title="Order count change">Δ Orders</th>
+                        <th class="num opt">Price band</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </Card>
-}
+                </thead>
+                <tbody>
+                    @foreach (var range in _priceRanges)
+                    {
+                        var bid = Metric(range, "Bid");
+                        var ask = Metric(range, "Ask");
+                        if (bid is null || ask is null)
+                        {
+                            continue;
+                        }
+
+                        <tr>
+                            <td class="range">±@Format.Number(range, 2)%</td>
+                            <td class="num opt @Format.Tone(bid.TotalCountChanged)">@NonZero(bid.TotalCountChanged, 0)</td>
+                            <td class="num opt @Format.Tone(bid.AvgAmountChanged)">@NonZero(bid.AvgAmountChanged, 4)</td>
+                            <td class="num dim opt">@Format.Usd(bid.TotalLiquidityUsd)</td>
+                            <td class="num up">@Format.Size(bid.TotalLiquidityBtc)</td>
+                            <td class="balance-col" title="@($"{Share(bid.TotalLiquidityBtc, ask.TotalLiquidityBtc)} bid")">
+                                <div class="balance"><span style="width: @Share(bid.TotalLiquidityBtc, ask.TotalLiquidityBtc)"></span></div>
+                            </td>
+                            <td class="num down">@Format.Size(ask.TotalLiquidityBtc)</td>
+                            <td class="num dim opt">@Format.Usd(ask.TotalLiquidityUsd)</td>
+                            <td class="num opt @Format.Tone(ask.AvgAmountChanged)">@NonZero(ask.AvgAmountChanged, 4)</td>
+                            <td class="num opt @Format.Tone(ask.TotalCountChanged)">@NonZero(ask.TotalCountChanged, 0)</td>
+                            <td class="num muted opt">@Format.Price(bid.MinPrice) – @Format.Price(ask.MaxPrice)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </Card>
+
+        <Card Title="By exchange" Meta="Liquidity in BTC per range" Flush>
+            <table class="grid">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Exchange</th>
+                        @foreach (var range in _priceRanges)
+                        {
+                            <th class="group" colspan="2">±@Format.Number(range, 2)%</th>
+                        }
+                        <th class="balance-col" rowspan="2">Bid / Ask ±@Format.Number(widestRange, 2)%</th>
+                        <th class="num" rowspan="2" title="Bid / ask levels within the widest range">Levels</th>
+                    </tr>
+                    <tr>
+                        @foreach (var _ in _priceRanges)
+                        {
+                            <th class="num group-start">Bid</th>
+                            <th class="num">Ask</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exchange in _activeExchangeNames)
+                    {
+                        var widestBid = Detail(exchange, widestRange, "Bid");
+                        var widestAsk = Detail(exchange, widestRange, "Ask");
+
+                        <tr>
+                            <td class="exchange">@exchange</td>
+                            @foreach (var range in _priceRanges)
+                            {
+                                <td class="num up group-start">@Format.Size(Detail(exchange, range, "Bid")?.LiquidityBtc)</td>
+                                <td class="num down">@Format.Size(Detail(exchange, range, "Ask")?.LiquidityBtc)</td>
+                            }
+                            <td class="balance-col" title="@($"{Share(widestBid?.LiquidityBtc, widestAsk?.LiquidityBtc)} bid")">
+                                <div class="balance"><span style="width: @Share(widestBid?.LiquidityBtc, widestAsk?.LiquidityBtc)"></span></div>
+                            </td>
+                            <td class="num dim">@widestBid?.LevelCount / @widestAsk?.LevelCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </Card>
+    }
+</div>
 
 @code {
     private readonly CancellationTokenSource _cancellation = new();
@@ -352,13 +300,6 @@
 
         var avgAmountChanged = exchanges.Count > 0 ? totalAmountChanged / exchanges.Count : 0;
 
-        // Create price range array with just min and max
-        var priceRanges = new string[0];
-        if (globalMinPrice.HasValue && globalMaxPrice.HasValue)
-        {
-            priceRanges = new[] { $"{globalMinPrice.Value:F2} - {globalMaxPrice.Value:F2}" };
-        }
-
         return new LiquidityMetric(
             rangePercent,
             side,
@@ -367,9 +308,26 @@
             avgAmountChanged,
             totalCountChanged,
             exchanges.Distinct().ToArray(),
-            priceRanges
+            globalMinPrice,
+            globalMaxPrice
         );
     }
+
+    private LiquidityMetric? Metric(double rangePercent, string side) =>
+        _liquidityMetrics.FirstOrDefault(m => m.RangePercent == rangePercent && m.Side == side);
+
+    private ExchangeDetail? Detail(string exchange, double rangePercent, string side) =>
+        _exchangeDetails.FirstOrDefault(d => d.Exchange == exchange && d.RangePercent == rangePercent && d.Side == side);
+
+    /// <summary>Bid share of the combined liquidity as a percentage</summary>
+    private static string Share(double? bid, double? ask)
+    {
+        var total = (bid ?? 0) + (ask ?? 0);
+        return Format.Percent(total > 0 ? (bid ?? 0) / total * 100 : 50);
+    }
+
+    private static string? NonZero(double value, int decimals) =>
+        Math.Round(value, decimals) != 0 ? Format.Signed(value, decimals) : null;
 
     private ExchangeDetail CalculateExchangeDetail(ICryptoOrderBook ob, double rangePercent, bool isBid, string exchangeName)
     {
@@ -555,7 +513,8 @@
         double AvgAmountChanged,
         long TotalCountChanged,
         string[] Exchanges,
-        string[] PriceRanges
+        double? MinPrice,
+        double? MaxPrice
     );
 
     private record ExchangeDetail(
