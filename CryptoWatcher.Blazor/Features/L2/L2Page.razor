@@ -21,6 +21,8 @@
 @using Bitstamp.Client.Websocket.Channels
 @using Hyperliquid.Client.Websocket
 @using Hyperliquid.Client.Websocket.Client
+@using Hyperliquid.Client.Websocket.Requests
+@using Hyperliquid.Client.Websocket.Requests.Subscriptions
 @using Hyperliquid.Client.Websocket.Websockets
 @using Crypto.Websocket.Extensions.OrderBooks.Sources
 @using CryptoWatcher.Blazor.Features.Shared.Exchanges
@@ -36,6 +38,15 @@
                         @onclick="() => SelectExchangeAsync(exchange)">@exchange</button>
             }
         </div>
+        @if (_currentExchange == "hyperliquid")
+        {
+            <div class="seg plain" role="group" aria-label="Hyperliquid book feed">
+                <button type="button" class="@(_hyperliquidFast ? "active" : null)" disabled="@_switching"
+                        title="5 levels per side, updates every ~0.5 s" @onclick="() => SetHyperliquidFeedAsync(true)">Fast · 5 levels</button>
+                <button type="button" class="@(_hyperliquidFast ? null : "active")" disabled="@_switching"
+                        title="20 levels per side, updates every ~5 s" @onclick="() => SetHyperliquidFeedAsync(false)">Deep · 20 levels</button>
+            </div>
+        }
         <form class="pair-form" @onsubmit="ApplyChangesAsync" @onsubmit:preventDefault>
             <input class="input" @bind="_selectedPair" aria-label="Pair" spellcheck="false" autocomplete="off" />
             <button class="btn" type="submit" disabled="@_switching">Load</button>
@@ -62,7 +73,7 @@
             </Stat>
         </div>
 
-        <Card Title="@Format.Name(_currentExchange)" Meta="@($"{_currentPair} · top {_displayedLevels} levels per side")" Flush>
+        <Card Title="@Format.Name(_currentExchange)" Meta="@($"{_currentPair} · {Math.Max(_bids.Length, _asks.Length)} levels per side")" Flush>
             <OrderBookLadder Asks="_asks" Bids="_bids" MidPrice="_midPrice" Kind="OrderBookKind.L2" />
         </Card>
     }
@@ -88,7 +99,8 @@
     private string _selectedExchange = "binance";
     private string _selectedPair = "BTCUSDT";
     private bool _switching = true;
-    private readonly int _displayedLevels = 15;
+    private bool _hyperliquidFast = true;
+    private readonly int _displayedLevels = 20;
 
     private string _status = string.Empty;
     private double _midPrice;
@@ -103,7 +115,7 @@
 
         DisplayStatus($"Connecting to {_currentExchange}");
 
-        _currentClient = await StartExchange(_currentExchange, [_currentPair], SubscribeToChanges, _cancellation.Token);
+        _currentClient = await StartExchange(_currentExchange, [_currentPair], _hyperliquidFast, SubscribeToChanges, _cancellation.Token);
         _switching = false;
 
         DisplayStatus($"Subscribed to {_currentExchange}");
@@ -116,6 +128,18 @@
 
         _selectedExchange = exchange;
         _selectedPair = _defaultPairs.GetValueOrDefault(exchange, _selectedPair);
+        await ApplyChangesAsync();
+    }
+
+    private async Task SetHyperliquidFeedAsync(bool fast)
+    {
+        if (_switching || fast == _hyperliquidFast)
+            return;
+
+        // Reconnect the current market with the selected feed
+        _hyperliquidFast = fast;
+        _selectedExchange = _currentExchange;
+        _selectedPair = _currentPair;
         await ApplyChangesAsync();
     }
 
@@ -183,7 +207,7 @@
 
         DisplayStatus($"Connecting to {_currentExchange}");
 
-        _currentClient = await StartExchange(_currentExchange, [_currentPair], SubscribeToChanges, _cancellation.Token);
+        _currentClient = await StartExchange(_currentExchange, [_currentPair], _hyperliquidFast, SubscribeToChanges, _cancellation.Token);
 
         DisplayStatus($"Subscribed to {_currentExchange}");
     }
@@ -213,7 +237,7 @@
         StateHasChanged();
     }
 
-    private static async Task<IWebsocketClient> StartExchange(string exchange, string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static async Task<IWebsocketClient> StartExchange(string exchange, string[] pairs, bool hyperliquidFast, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var exchangeSafe = (exchange ?? string.Empty).ToLower();
         return exchangeSafe switch
@@ -222,7 +246,7 @@
             "bitfinex" => await StartBitfinex(pairs, initialized, stoppingToken),
             "bitmex" => await StartBitmex(pairs, initialized, stoppingToken),
             "bitstamp" => await StartBitstamp(pairs, initialized, stoppingToken),
-            "hyperliquid" => await StartHyperliquid(pairs, initialized, stoppingToken),
+            "hyperliquid" => await StartHyperliquid(pairs, hyperliquidFast, initialized, stoppingToken),
             _ => throw new InvalidOperationException($"Unsupported exchange: '{exchange}'")
         };
     }
@@ -318,7 +342,7 @@
         return await InitOrderBooks(pairs, initialized, stoppingToken, communicator, source);
     }
 
-    private static async Task<IWebsocketClient> StartHyperliquid(string[] pairs, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
+    private static async Task<IWebsocketClient> StartHyperliquid(string[] pairs, bool fast, Action<ICryptoOrderBook> initialized, CancellationToken stoppingToken)
     {
         var url = HyperliquidValues.MainnetWebsocketApiUrl;
         var communicator = new HyperliquidWebsocketCommunicator(url) { Name = "Hyperliquid" };
@@ -330,8 +354,9 @@
             Console.WriteLine($"Hyperliquid reconnected, type: {x.Type}");
             foreach (var pair in pairs)
             {
-                // Fast mode, pushes every ~0.5s but only 5 levels per side
-                client.Send(new HyperliquidFastL2BookSubscribeRequest(pair));
+                // Fast feed pushes every ~0.5s with 5 levels per side, the default one every ~5s with 20 levels
+                HyperliquidRequestBase request = fast ? new HyperliquidFastL2BookSubscribeRequest(pair) : new L2BookSubscribeRequest(pair);
+                client.Send(request);
             }
         });
         communicator.DisconnectionHappened.Subscribe(x => Console.WriteLine($"Hyperliquid disconnected, type: {x.Type}"));
