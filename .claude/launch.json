@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "crypto-watcher",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj"],
+      "port": 5022
+    }
+  ]
+}
