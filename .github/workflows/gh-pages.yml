@@ -20,6 +20,14 @@ jobs:
     - name: Copy index.html to 404.html
       run: cp build/wwwroot/index.html build/wwwroot/404.html
       
+    # copy index.html to <route>.html for every page, GitHub Pages serves /l2 from l2.html with 200 instead of the 404 fallback
+    - name: Copy index.html to page routes
+      run: |
+        for route in $(sed -n 's|.*@page "/\([^"{]\{1,\}\)".*|\1|p' $(find CryptoWatcher.Blazor/Features -name '*.razor')); do
+          mkdir -p "build/wwwroot/$(dirname "$route")"
+          cp build/wwwroot/index.html "build/wwwroot/$route.html"
+        done
+      
     # add .nojekyll file to tell GitHub pages to not treat this as a Jekyll project. (Allow files and folders starting with an underscore)
     - name: Add .nojekyll file
       run: touch build/wwwroot/.nojekyll
