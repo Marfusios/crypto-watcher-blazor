@@ -8,6 +8,7 @@
 @using Websocket.Client
 @using System
 @using Crypto.Websocket.Extensions.OrderBooks.SourcesL3
+@using System.Reactive.Linq
 @implements IDisposable
 
 <div class="page book-page">
@@ -71,7 +72,9 @@
 
     private void SubscribeToChanges(ICryptoOrderBook ob)
     {
-        var sub = ob.OrderBookUpdatedStream.Subscribe(x =>
+        var sub = ob.OrderBookUpdatedStream
+            .Sample(Throttling.RenderInterval)
+            .Subscribe(x =>
         {
             _midPrice = ob.MidPrice;
             

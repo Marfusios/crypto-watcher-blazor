@@ -157,6 +157,7 @@
         
         var subscription = streams
             .CombineLatest()
+            .Sample(Throttling.RenderInterval)
             .Subscribe(changes =>
         {
             _averagePrice = changes.Average(x => x.Quotes.Mid);

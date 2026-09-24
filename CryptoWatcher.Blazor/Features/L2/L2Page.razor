@@ -24,6 +24,7 @@
 @using Hyperliquid.Client.Websocket.Websockets
 @using Crypto.Websocket.Extensions.OrderBooks.Sources
 @using CryptoWatcher.Blazor.Features.Shared.Exchanges
+@using System.Reactive.Linq
 @implements IDisposable
 
 <div class="page book-page">
@@ -189,7 +190,9 @@
 
     private void SubscribeToChanges(ICryptoOrderBook ob)
     {
-        var sub = ob.OrderBookUpdatedStream.Subscribe(x =>
+        var sub = ob.OrderBookUpdatedStream
+            .Sample(Throttling.RenderInterval)
+            .Subscribe(x =>
         {
             _midPrice = ob.MidPrice;
             

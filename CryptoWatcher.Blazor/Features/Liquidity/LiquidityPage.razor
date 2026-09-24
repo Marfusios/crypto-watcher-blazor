@@ -209,7 +209,11 @@
         if (!_orderBooks.Any())
             return;
 
-        var validOrderBooks = _orderBooks.Values.Where(ob => ob.MidPrice > 0).ToArray();
+        // Copy the levels once per tick, BidLevels/AskLevels materialize the whole book side on every access
+        var validOrderBooks = _orderBooks.Values
+            .Where(ob => ob.MidPrice > 0)
+            .Select(ob => new BookSnapshot(ob.ExchangeName ?? "Unknown", ob.MidPrice, ob.BidLevels, ob.AskLevels))
+            .ToArray();
         if (!validOrderBooks.Any())
             return;
 
@@ -249,7 +253,7 @@
         _totalAskLiquidity = validOrderBooks.Sum(ob => ob.AskLevels.Take(50).Sum(l => l.Amount ?? 0));
     }
 
-    private LiquidityMetric CalculateRangeMetrics(ICryptoOrderBook[] orderBooks, double rangePercent, bool isBid)
+    private LiquidityMetric CalculateRangeMetrics(BookSnapshot[] orderBooks, double rangePercent, bool isBid)
     {
         var side = isBid ? "Bid" : "Ask";
         double totalLiquidity = 0;
@@ -329,7 +333,7 @@
     private static string? NonZero(double value, int decimals) =>
         Math.Round(value, decimals) != 0 ? Format.Signed(value, decimals) : null;
 
-    private ExchangeDetail CalculateExchangeDetail(ICryptoOrderBook ob, double rangePercent, bool isBid, string exchangeName)
+    private ExchangeDetail CalculateExchangeDetail(BookSnapshot ob, double rangePercent, bool isBid, string exchangeName)
     {
         var side = isBid ? "Bid" : "Ask";
         var midPrice = ob.MidPrice;
@@ -516,6 +520,8 @@
         double? MinPrice,
         double? MaxPrice
     );
+
+    private record BookSnapshot(string ExchangeName, double MidPrice, OrderBookLevel[] BidLevels, OrderBookLevel[] AskLevels);
 
     private record ExchangeDetail(
         string Exchange,

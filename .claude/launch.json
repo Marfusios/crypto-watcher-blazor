@@ -4,7 +4,7 @@
     {
       "name": "crypto-watcher",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj"],
+      "runtimeArgs": ["run", "--project", "CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj", "-c", "Release"],
       "port": 5022
     }
   ]
