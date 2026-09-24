@@ -8,13 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 8.x
+        dotnet-version: 10.x
     - name: Publish with dotnet
-      run: dotnet publish --configuration Release --output build
+      run: dotnet publish CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj --configuration Release --output build
       
     # copy index.html to 404.html to serve the same file when a file is not found
     - name: Copy index.html to 404.html
@@ -25,7 +25,7 @@ jobs:
       run: touch build/wwwroot/.nojekyll
       
     - name: Deploy to Github Pages
-      uses: JamesIves/github-pages-deploy-action@4.1.7
+      uses: JamesIves/github-pages-deploy-action@v4.9.0
       with:
           branch: gh-pages # The branch the action should deploy to.
           folder: build/wwwroot # The folder the action should deploy.

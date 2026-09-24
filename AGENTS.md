@@ -9,7 +9,7 @@
 ## Build, Test, and Development Commands
 - `dotnet restore CryptoWatcher.sln` - restore NuGet packages.
 - `dotnet build CryptoWatcher.sln -c Release` - compile and validate the app.
-- `dotnet watch run --project CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj` - run the WASM app locally with hot reload at `http://localhost:5020`.
+- `dotnet watch run --project CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj` - run the WASM app locally with hot reload at `http://localhost:5022`.
 - `dotnet publish CryptoWatcher.Blazor/CryptoWatcher.Blazor.csproj -c Release -o build` - mirror the GitHub Pages publish output (adds assets to `build/wwwroot`).
 
 ## Coding Style & Naming Conventions
